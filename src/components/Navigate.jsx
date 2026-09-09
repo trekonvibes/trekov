@@ -13,6 +13,7 @@ import { BackIcon, CalendarIcon, Logo } from './Icons'
 import { VEHICLES } from './VehicleIcons'
 import Voice from './Voice'
 import Portal from './Portal'
+import { currentVehicle, mapplsUrl } from '../lib/handoff'
 
 /** Street level. Esri imagery tops out at 18; 17 keeps a block of context. */
 const NAV_ZOOM = 17
@@ -497,6 +498,15 @@ export default function Navigate({ place, trip, me, onClose }) {
                       className="rounded-full bg-ink/90 backdrop-blur-xl border border-line text-xs font-semibold px-3 py-2 hover:border-brand">
                 Overview
               </button>
+              {/* Trekov drives the navigation; Mappls is here for anyone who
+                  would rather finish the journey in their app, and for the
+                  house numbers it knows and we do not. A link, not the
+                  default. */}
+              <a href={mapplsUrl(place, currentVehicle())} target="_blank" rel="noreferrer"
+                 className="rounded-full bg-ink/90 backdrop-blur-xl border border-line text-xs
+                            font-semibold px-3 py-2 hover:border-brand text-center">
+                Mappls
+              </a>
               {!follow && pos && (
                 <button onClick={recentre} className="rounded-full bg-brand text-ink text-xs font-semibold px-3 py-2">
                   Recentre

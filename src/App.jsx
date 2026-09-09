@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   addNotification, adoptPlace, getPlace, importTrip, meId, selectSavedPlaces, selectTrip,
   selectUnreadCount, useStore,
@@ -11,7 +11,7 @@ import { NEW_PLACE, broadcastTransport } from './lib/notify'
 import Composer from './components/Composer'
 import Discover from './components/Discover'
 import MapView from './components/MapView'
-import NavigateSheet from './components/NavigateSheet'
+import Navigate from './components/Navigate'
 import PlaceSheet from './components/PlaceSheet'
 import Profile from './components/Profile'
 import SharedTrip from './components/SharedTrip'
@@ -37,11 +37,25 @@ export default function App() {
   const savedCount = useStore(selectSavedPlaces).length
   const unread = useStore(selectUnreadCount)
   const notifier = useRef(null)
+  const profile = useStore((s) => s.profile)
   const navTrip = useStore((s) => (nav?.tripId ? selectTrip(s, nav.tripId) : null))
 
-  // The per-tab traveller identity the live group map used lives in git, not
-  // here: navigation is a handoff now, so nothing in this screen needs it.
+  // One identity per tab, so two tabs act as two travellers sharing a trip.
+  // With a real backend this becomes the signed-in user's id.
+  const account = useStore((s) => s.account)
 
+  const me = useMemo(() => {
+    let id = sessionStorage.getItem('trekov.memberId')
+    if (!id) {
+      id = `m_${Math.random().toString(36).slice(2, 9)}`
+      sessionStorage.setItem('trekov.memberId', id)
+    }
+    // Companions are labelled by handle, not by the profile name — that
+    // defaults to "You", so a whole group showed up on each other's maps as
+    // "You". Signed out, a short id keeps two anonymous riders apart.
+    const handle = account?.handle ?? profile.handle ?? 'traveller'
+    return { id, name: account ? handle : `${handle}·${id.slice(-3)}` }
+  }, [account, profile.handle])
 
   const startNavigation = (placeId, tripId) => { setPlace(null); setNav({ placeId, tripId }) }
 
@@ -133,9 +147,10 @@ export default function App() {
       )}
 
       {nav && getPlace(nav.placeId) && (
-        <NavigateSheet
+        <Navigate
           place={getPlace(nav.placeId)}
-          stops={(navTrip?.stops ?? []).map((s) => getPlace(s.placeId)).filter(Boolean)}
+          trip={navTrip}
+          me={me}
           onClose={() => setNav(null)}
         />
       )}
