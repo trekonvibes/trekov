@@ -3,9 +3,11 @@ import { deletePost, getPlace, resetAll, selectMyPosts, selectSavedPlaces, selec
 import { TrashIcon, Wordmark } from './Icons'
 import Account from './Account'
 import Media from './Media'
+import ProfileEditor from './ProfileEditor'
 
 export default function Profile({ onPost }) {
   const [confirmReset, setConfirmReset] = useState(false)
+  const [editing, setEditing] = useState(false)
   const profile = useStore((s) => s.profile)
   const mine = useStore(selectMyPosts)
   const saved = useStore(selectSavedPlaces)
@@ -22,12 +24,22 @@ export default function Profile({ onPost }) {
       </header>
 
       <div className="p-5 flex items-center gap-4">
-        <img src={profile.avatar} alt="" className="size-20 rounded-full object-cover ring-2 ring-brand/40" />
-        <div className="min-w-0">
+        <button onClick={() => setEditing(true)} className="shrink-0" aria-label="Edit profile photo">
+          <img src={profile.avatar} alt=""
+               className="size-20 rounded-full object-cover ring-2 ring-brand/40" />
+        </button>
+        <div className="min-w-0 flex-1">
           <p className="text-lg font-semibold leading-tight">{profile.name}</p>
           <p className="text-sm text-mist leading-snug mt-0.5">{profile.bio}</p>
         </div>
+        <button onClick={() => setEditing(true)}
+                className="shrink-0 self-start rounded-full border border-line px-3.5 py-1.5
+                           text-xs font-semibold hover:border-brand hover:text-brand">
+          Edit
+        </button>
       </div>
+
+      {editing && <ProfileEditor onClose={() => setEditing(false)} />}
 
       <Account />
 

@@ -61,6 +61,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   const [colour, setColour] = useState(() => pref('trekov.vehicleColour', 'green'))
   const [mapType, setMapType] = useState(() => pref('trekov.navMapType', 'roadmap'))
   const [traffic, setTraffic] = useState(() => pref('trekov.traffic', '1') === '1')
+  const [trafficShown, setTrafficShown] = useState(false)
   // Collapsed by default: the map is the thing you need while driving.
   const [expanded, setExpanded] = useState(false)
   // Vehicle and colour live behind the vehicle button rather than on the bar.
@@ -94,7 +95,13 @@ export default function Navigate({ place, trip, me, onClose }) {
   useEffect(() => { localStorage.setItem('trekov.vehicle', vehicle) }, [vehicle])
   useEffect(() => { localStorage.setItem('trekov.vehicleColour', colour) }, [colour])
   useEffect(() => { localStorage.setItem('trekov.navMapType', mapType); drv.current?.setMapType(mapType) }, [mapType, engine])
-  useEffect(() => { localStorage.setItem('trekov.traffic', traffic ? '1' : '0'); drv.current?.setTraffic(traffic) }, [traffic, engine])
+  // setTraffic reports whether the layer is actually showing — Google has one,
+  // the offline Leaflet engine does not — and the route style follows that
+  // rather than the button, so the offline map keeps its solid line.
+  useEffect(() => {
+    localStorage.setItem('trekov.traffic', traffic ? '1' : '0')
+    setTrafficShown(Boolean(drv.current?.setTraffic(traffic)))
+  }, [traffic, engine])
   useEffect(() => {
     localStorage.setItem('trekov.view3d', view3d ? '1' : '0')
     const apply = () => {
@@ -205,11 +212,22 @@ export default function Navigate({ place, trip, me, onClose }) {
     routeLines.current.forEach((l) => l.remove())
     routeLines.current = []
     if (!route?.coordinates?.length) return
-    routeLines.current = [
-      d.polyline(route.coordinates, { color: '#0B0F0E', weight: 9, opacity: .5, back: true }),
-      d.polyline(route.coordinates, { color: '#00C08B', weight: 5, opacity: .9 }),
-    ]
-  }, [route, engine])
+    // Traffic colours are painted on the road itself, and a solid route line
+    // lands straight on top of them — the one stretch you most need to see
+    // ahead is the one stretch the route hides. With traffic on, the route
+    // becomes a translucent highlight band instead: wider, so it still reads
+    // at a glance, and sheer enough for amber and red to come through it.
+    routeLines.current = (trafficShown
+      ? [
+          { color: '#0B0F0E', weight: 13, opacity: .28, back: true },
+          { color: '#3DDC97', weight: 9, opacity: .34 },
+        ]
+      : [
+          { color: '#0B0F0E', weight: 9, opacity: .5, back: true },
+          { color: '#00C08B', weight: 5, opacity: .9 },
+        ]
+    ).map((style) => d.polyline(route.coordinates, style))
+  }, [route, engine, trafficShown])
 
   // Comet trail of recent fixes: one line per segment, since neither engine
   // can gradient a single polyline.
@@ -224,10 +242,16 @@ export default function Navigate({ place, trip, me, onClose }) {
       const k = i / (pts.length - 1)
       trailLines.current.push(d.polyline(
         [[pts[i - 1].lat, pts[i - 1].lng], [pts[i].lat, pts[i].lng]],
-        { color: '#3DDC97', opacity: 0.08 + k * 0.55, weight: 2 + k * 4 },
+        // The trail is a green line on the road too, so it thins out with
+        // traffic on for the same reason the route does.
+        {
+          color: '#3DDC97',
+          opacity: (0.08 + k * 0.55) * (trafficShown ? 0.5 : 1),
+          weight: 2 + k * 4,
+        },
       ))
     }
-  }, [pos, moving, engine])
+  }, [pos, moving, engine, trafficShown])
 
   // Our own marker: the chosen vehicle in the chosen colour, rotated to the
   // way we are moving. Rotation lives on the outer node, motion on the inner.
