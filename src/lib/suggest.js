@@ -111,7 +111,9 @@ export function alongRoute(coordinates, categoryIds = ['fuel', 'food'], { points
   return once(key, async () => {
     const groups = await Promise.all(categoryIds.map(async (id) => {
       const hits = await Promise.all(spots.map((s) =>
-        findNearby(id, s, { radiusKm: 12 }).catch(() => [])))
+        // No widening here: this samples a corridor, and a result 200 km
+        // off the route is not "on the way" by any reading.
+        findNearby(id, s, { radiusKm: 12 }).then((r) => r.results).catch(() => [])))
       const seen = new Set()
       const merged = []
       for (const hit of hits.flat()) {
@@ -134,7 +136,7 @@ export function alongRoute(coordinates, categoryIds = ['fuel', 'food'], { points
  * everyone else has. findNearby already ranks that way; this only names it.
  */
 export async function staysNear(place) {
-  const results = await findNearby('hotel', place, { radiusKm: 15 })
+  const { results } = await findNearby('hotel', place, { radiusKm: 15, expand: true })
   return {
     partners: results.filter((r) => r.partner),
     others: results.filter((r) => !r.partner).slice(0, 5),
@@ -143,7 +145,7 @@ export async function staysNear(place) {
 
 /** Things worth stopping for near a place. */
 export async function attractionsNear(place) {
-  const results = await findNearby('attraction', place, { radiusKm: 15 })
+  const { results } = await findNearby('attraction', place, { radiusKm: 15, expand: true })
   return results.slice(0, 6)
 }
 

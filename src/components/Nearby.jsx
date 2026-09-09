@@ -30,6 +30,8 @@ const RADIUS_KM = 8
 export default function Nearby({ centre, centreName, onNavigate }) {
   const [category, setCategory] = useState(null)
   const [results, setResults] = useState([])
+  // The radius that actually answered, which is not always the one asked for.
+  const [usedKm, setUsedKm] = useState(RADIUS_KM)
   const [state, setState] = useState('idle')
 
   useEffect(() => {
@@ -37,9 +39,10 @@ export default function Nearby({ centre, centreName, onNavigate }) {
     let live = true
     setState('loading')
     setResults([])
-    findNearby(category, centre, { radiusKm: RADIUS_KM }).then((hits) => {
+    findNearby(category, centre, { radiusKm: RADIUS_KM, expand: true }).then(({ results: hits, radiusKm }) => {
       if (!live) return
       setResults(hits)
+      setUsedKm(radiusKm)
       setState(hits.length ? 'ready' : 'empty')
     })
     return () => { live = false }
@@ -86,7 +89,9 @@ export default function Nearby({ centre, centreName, onNavigate }) {
                 <ActiveIcon size={16} className="text-brand shrink-0" /> {active.label}
               </h2>
               <p className="text-[11px] text-mist truncate">
-                Within {RADIUS_KM} km of {centreName || 'here'}
+                {usedKm > RADIUS_KM
+                  ? `Nothing within ${RADIUS_KM} km — showing ${usedKm} km`
+                  : `Within ${usedKm} km of ${centreName || 'here'}`}
               </p>
             </div>
           </div>

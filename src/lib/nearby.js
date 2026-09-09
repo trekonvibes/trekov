@@ -52,7 +52,7 @@ export const CATEGORIES = [
 ]
 
 const cache = new Map()
-const cacheKey = (c, lat, lng) => `${c}|${lat.toFixed(2)},${lng.toFixed(2)}`
+const cacheKey = (c, lat, lng, km) => `${c}|${lat.toFixed(2)},${lng.toFixed(2)}|${km}`
 
 /** Roughly degrees per km, for a cheap bounding box. */
 const KM = 1 / 111
@@ -136,15 +136,10 @@ async function googlePlaces(query, centre, radiusKm, tag = '') {
 }
 
 /** Partner listings first, then Google, de-duplicated by name. */
-export async function findNearby(categoryId, centre, { radiusKm = 8 } = {}) {
-  const category = CATEGORIES.find((c) => c.id === categoryId)
-  if (!category || !centre) return []
-  const key = cacheKey(categoryId, centre.lat, centre.lng)
-  if (cache.has(key)) return cache.get(key)
-
+async function searchAt(category, centre, radiusKm) {
   const searches = category.queries ?? [{ q: category.query, tag: '' }]
   const [partners, ...groups] = await Promise.all([
-    partnerListings(categoryId, centre, radiusKm),
+    partnerListings(category.id, centre, radiusKm),
     ...searches.map(({ q, tag }) =>
       googlePlaces(q, centre, radiusKm, tag).catch((e) => {
         console.info('Trekov: places search failed —', e.message)
@@ -162,20 +157,49 @@ export async function findNearby(categoryId, centre, { radiusKm = 8 } = {}) {
 
   // The rectangle's corners reach about 1.4x the radius, and the partner
   // query is a box too, so both sources are trimmed to the real circle. The
-  // heading says "within 8 km" and now that is arithmetic, not a hope.
-  const within = (r) =>
-    r.lat == null || r.lng == null ||
-    distance(centre, { lat: r.lat, lng: r.lng }) <= radiusKm * 1000
+  // heading is arithmetic, not a hope.
+  const km = (r) => (r.lat == null ? null : distance(centre, { lat: r.lat, lng: r.lng }) / 1000)
 
   const seen = new Set(partners.map((p) => p.name.toLowerCase()))
-  const merged = [...partners, ...google.filter((g) => !seen.has(g.name.toLowerCase()))]
-    .filter(within)
-    // Carry how far, so the claim in the heading is on every card rather than
-    // taken on trust.
-    .map((r) => ({
-      ...r,
-      km: r.lat == null ? null : distance(centre, { lat: r.lat, lng: r.lng }) / 1000,
-    }))
-  cache.set(key, merged)
-  return merged
+  return [...partners, ...google.filter((g) => !seen.has(g.name.toLowerCase()))]
+    .map((r) => ({ ...r, km: km(r) }))
+    .filter((r) => r.km == null || r.km <= radiusKm)
+}
+
+/**
+ * How far to widen when a place is remote.
+ *
+ * Eight kilometres is the right question in a town and the wrong one on a
+ * mountain road, where the honest answer would be an empty list and a
+ * traveller still needing fuel. So the search widens until it finds enough to
+ * be useful, and the caller is told which radius actually answered — a result
+ * 60 km away is worth showing, but not worth passing off as nearby.
+ */
+const LADDER = [25, 75, 200]
+const ENOUGH = 4
+
+/**
+ * @returns { results, radiusKm } — the radius is the one that produced these,
+ *          which is not always the one that was asked for.
+ */
+export async function findNearby(categoryId, centre, { radiusKm = 8, expand = false } = {}) {
+  const category = CATEGORIES.find((c) => c.id === categoryId)
+  if (!category || !centre) return { results: [], radiusKm }
+
+  const steps = expand ? [radiusKm, ...LADDER.filter((r) => r > radiusKm)] : [radiusKm]
+  let best = { results: [], radiusKm }
+
+  for (const r of steps) {
+    const key = cacheKey(categoryId, centre.lat, centre.lng, r)
+    let results = cache.get(key)
+    if (!results) {
+      results = await searchAt(category, centre, r)
+      cache.set(key, results)
+    }
+    best = { results, radiusKm: r }
+    // Stop at the first radius that answers properly. A wider search would
+    // only bury these under things that are further away.
+    if (results.length >= ENOUGH) break
+  }
+  return best
 }
