@@ -4,7 +4,7 @@ import {
   selectNewPlaces, selectNotifications, toggleSavePlace, useStore,
 } from '../lib/store'
 import { ago, timeAgo } from '../lib/format'
-import { CalendarIcon, Logo, NavIcon, SaveIcon } from './Icons'
+import { CalendarIcon, Logo, NavIcon, SaveIcon, StarIcon } from './Icons'
 import Media from './Media'
 import Nearby from './Nearby'
 
@@ -59,8 +59,10 @@ export default function Discover({ onOpenPlace, onNavigate }) {
                     className="w-full text-left rounded-2xl overflow-hidden border border-sun/40 bg-surface">
               <div className="relative">
                 <Thumb place={attraction} className="w-full aspect-[16/10] rounded-none" />
-                <span className="absolute top-3 left-3 rounded-full bg-sun text-ink text-[10px] font-bold
-                                 uppercase tracking-[0.1em] px-2.5 py-1">★ {MONTH}</span>
+                <span className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-sun text-ink
+                                 text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1">
+                  <StarIcon size={11} filled /> {MONTH}
+                </span>
               </div>
               <div className="p-4">
                 <p className="font-semibold leading-tight">{attraction.name}</p>

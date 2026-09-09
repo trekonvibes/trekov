@@ -4,7 +4,7 @@ import {
   meId, RATING_CATEGORIES, selectRatingsAt, toggleSavePlace, useStore,
 } from '../lib/store'
 import { ago, compact, formatDateTime, mapsUrl } from '../lib/format'
-import { CalendarIcon, CloseIcon, NavIcon, PlusIcon, SaveIcon } from './Icons'
+import { CalendarIcon, CloseIcon, HeartIcon, NavIcon, PlusIcon, SaveIcon, StarIcon } from './Icons'
 import Media from './Media'
 import Portal from './Portal'
 import PhotoViewer from './PhotoViewer'
@@ -164,7 +164,7 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                   <Media media={post.media} alt={place.name} className="w-full aspect-[4/5] object-cover bg-raised" />
                   <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-brand text-ink
                                    text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1">
-                    ★ Featured
+                    <StarIcon size={11} filled /> Featured
                     {post.authorId === meId && <span className="font-extrabold">· yours</span>}
                   </span>
                   <div className="flex items-center gap-3 px-4 py-3">
@@ -175,7 +175,9 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                         {formatDateTime(post.createdAt)} · {ago(post.createdAt)}
                       </p>
                     </div>
-                    <span className="text-xs text-mist shrink-0">♥ {compact(post.likes)}</span>
+                    <span className="flex items-center gap-1 text-xs text-mist shrink-0">
+                      <HeartIcon size={12} /> {compact(post.likes)}
+                    </span>
                   </div>
                   {post.caption && (
                     <p className="px-4 pb-3 text-sm text-white/85 leading-snug">{post.caption}</p>
@@ -207,7 +209,9 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                                   {formatDateTime(o.createdAt)}
                                 </span>
                               </span>
-                              <span className="text-[11px] text-mist shrink-0">♥ {compact(o.likes)}</span>
+                              <span className="flex items-center gap-1 text-[11px] text-mist shrink-0">
+                                <HeartIcon size={11} /> {compact(o.likes)}
+                              </span>
                             </button>
                           </li>
                         )

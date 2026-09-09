@@ -1,7 +1,21 @@
 import { useEffect, useState } from 'react'
 import { CATEGORIES, findNearby } from '../lib/nearby'
 import { adoptHit } from '../lib/adopt'
-import { BackIcon } from './Icons'
+import {
+  BackIcon, BedIcon, BowlIcon, CarIcon, CutleryIcon, KeyIcon, MotorcycleIcon, MountainIcon,
+  StarIcon,
+} from './Icons'
+
+/** Category id to icon. Kept here rather than in the data, which stays plain. */
+const ICONS = {
+  hotel: BedIcon,
+  food: CutleryIcon,
+  street_food: BowlIcon,
+  bike_service: MotorcycleIcon,
+  car_service: CarIcon,
+  rental: KeyIcon,
+  attraction: MountainIcon,
+}
 
 const RADIUS_KM = 8
 
@@ -33,6 +47,7 @@ export default function Nearby({ centre, centreName, onNavigate }) {
   if (!centre) return null
 
   const active = CATEGORIES.find((c) => c.id === category)
+  const ActiveIcon = active ? (ICONS[active.id] ?? MountainIcon) : MountainIcon
 
   return (
     <section>
@@ -42,17 +57,20 @@ export default function Nearby({ centre, centreName, onNavigate }) {
           <p className="text-[11px] text-mist mb-3">Within {RADIUS_KM} km of {centreName || 'here'}</p>
 
           <ul className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((c) => (
-              <li key={c.id}>
-                <button onClick={() => setCategory(c.id)}
-                        className="w-full h-full text-left rounded-2xl border border-line bg-surface p-3
-                                   hover:border-brand/60 transition">
-                  <span className="text-2xl leading-none" aria-hidden="true">{c.icon}</span>
-                  <span className="block text-sm font-semibold mt-2">{c.label}</span>
-                  <span className="block text-[11px] text-mist leading-snug">{c.blurb}</span>
-                </button>
-              </li>
-            ))}
+            {CATEGORIES.map((c) => {
+              const CategoryIcon = ICONS[c.id] ?? MountainIcon
+              return (
+                <li key={c.id}>
+                  <button onClick={() => setCategory(c.id)}
+                          className="w-full h-full text-left rounded-2xl border border-line bg-surface p-3
+                                     hover:border-brand/60 transition group">
+                    <CategoryIcon size={22} className="text-brand" />
+                    <span className="block text-sm font-semibold mt-2">{c.label}</span>
+                    <span className="block text-[11px] text-mist leading-snug">{c.blurb}</span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </>
       ) : (
@@ -63,8 +81,8 @@ export default function Nearby({ centre, centreName, onNavigate }) {
               <BackIcon size={20} />
             </button>
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold truncate">
-                <span aria-hidden="true">{active.icon}</span> {active.label}
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold truncate">
+                <ActiveIcon size={16} className="text-brand shrink-0" /> {active.label}
               </h2>
               <p className="text-[11px] text-mist truncate">
                 Within {RADIUS_KM} km of {centreName || 'here'}
@@ -97,8 +115,9 @@ export default function Nearby({ centre, centreName, onNavigate }) {
 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px]">
                   {r.rating != null && (
-                    <span className="text-sun">★ {r.rating.toFixed(1)}
-                      {r.reviews ? <span className="text-mist"> ({r.reviews})</span> : null}
+                    <span className="flex items-center gap-1 text-sun">
+                      <StarIcon size={11} filled /> {r.rating.toFixed(1)}
+                      {r.reviews ? <span className="text-mist">({r.reviews})</span> : null}
                     </span>
                   )}
                   {r.openNow === true && <span className="text-brand">Open</span>}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addBooking, removeBooking, selectBookings, useStore } from '../lib/store'
-import { CloseIcon, PlusIcon } from './Icons'
+import { CloseIcon, ExternalIcon, PlusIcon } from './Icons'
 
 /**
  * Trip bookings.
@@ -119,7 +119,9 @@ export default function Bookings({ trip, destination }) {
             <button type="button" onClick={() => { setAdding(false); setForm(blank) }}
                     className="rounded-full border border-line px-4 py-2 text-sm">Cancel</button>
             <a href={SEARCH[form.mode](query)} target="_blank" rel="noreferrer"
-               className="ml-auto text-xs text-brand font-semibold">Search {mode.label.toLowerCase()} ↗</a>
+               className="ml-auto flex items-center gap-1 text-xs text-brand font-semibold">
+              Search {mode.label.toLowerCase()} <ExternalIcon size={12} />
+            </a>
           </div>
         </form>
       )}
