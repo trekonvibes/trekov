@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../lib/store'
-import {
-  defaultAvatar, HANDLE_HINT, normaliseHandle, saveProfile, squareDataUrl, validHandle,
-} from '../lib/profile'
+import { defaultAvatar, HANDLE_HINT, normaliseHandle, saveProfile, validHandle } from '../lib/profile'
 import { CloseIcon } from './Icons'
+import AvatarCropper from './AvatarCropper'
 import Camera from './Camera'
 import Portal from './Portal'
 
@@ -30,6 +29,9 @@ export default function ProfileEditor({ onClose }) {
   // stored, so it keeps up while the handle is still being typed.
   const [avatar, setAvatar] = useState(profile.avatar)
   const [shooting, setShooting] = useState(false)
+  // The photo waiting to be positioned. Camera and gallery both land here, so
+  // a crop is offered however the picture arrived.
+  const [cropping, setCropping] = useState(null)
   const picker = useRef(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -37,17 +39,13 @@ export default function ProfileEditor({ onClose }) {
   const handleError = handle && !validHandle(handle) ? HANDLE_HINT : ''
   const canSave = name.trim() && validHandle(handle) && !saving
 
-  async function capture(file) {
+  function capture(file) {
     setShooting(false)
     if (!file) return
     setError('')
-    try {
-      setAvatar(await squareDataUrl(file))
-    } catch {
-      // Phones hand over formats the canvas cannot always decode, HEIC being
-      // the usual one, and the browser gives no warning until it fails.
-      setError('That image could not be read. Try another, or take a photo.')
-    }
+    // Unreadable formats — HEIC most often — are caught by the cropper, which
+    // is where the image is actually decoded.
+    setCropping(file)
   }
 
   function choose(e) {
@@ -80,6 +78,16 @@ export default function ProfileEditor({ onClose }) {
 
   if (shooting) {
     return <Camera onCapture={capture} onCancel={() => setShooting(false)} />
+  }
+
+  if (cropping) {
+    return (
+      <AvatarCropper
+        file={cropping}
+        onCancel={() => setCropping(null)}
+        onDone={(dataUrl) => { setAvatar(dataUrl); setCropping(null) }}
+      />
+    )
   }
 
   return (
@@ -126,7 +134,7 @@ export default function ProfileEditor({ onClose }) {
                 <input ref={picker} type="file" accept="image/*" onChange={choose} className="hidden" />
                 <p className="text-[11px] text-mist mt-1.5 leading-snug">
                   {avatar
-                    ? 'Cropped to a square. Place photos stay camera-only.'
+                    ? 'Tap a photo option to reposition it. Place photos stay camera-only.'
                     : 'No photo — your initial is used instead.'}
                 </p>
               </div>

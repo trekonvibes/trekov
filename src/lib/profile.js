@@ -40,37 +40,32 @@ export function defaultAvatar(seed = '') {
 }
 
 /** Avatar side in pixels. Small enough to live in a text column comfortably. */
-const AVATAR_PX = 256
+export const AVATAR_PX = 256
 
 /**
- * A captured photo down to a square avatar, as a data URL.
+ * Render a chosen square of a loaded image as the avatar.
  *
  * Deliberately not the blob-in-IndexedDB path that place photos use. Those are
  * full-size, many, and belong to a post that syncs on its own; an avatar is one
  * small square that has to render anywhere a name appears — including from
  * another device, where an IndexedDB key means nothing. At this size the data
- * URL is a couple of tens of kilobytes and simply travels with the row.
+ * URL is a few kilobytes and simply travels with the row.
+ *
+ * @param img   a loaded HTMLImageElement
+ * @param crop  { sx, sy, size } in the image's own pixels — the square the
+ *              cropper had inside its circle
  */
-export function squareDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      // Centre crop, so a portrait photo does not come out squashed.
-      const side = Math.min(img.width, img.height)
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = AVATAR_PX
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(
-        img,
-        (img.width - side) / 2, (img.height - side) / 2, side, side,
-        0, 0, AVATAR_PX, AVATAR_PX,
-      )
-      URL.revokeObjectURL(img.src)
-      resolve(canvas.toDataURL('image/jpeg', 0.82))
-    }
-    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('Could not read that photo')) }
-    img.src = URL.createObjectURL(file)
-  })
+export function renderAvatar(img, { sx, sy, size }) {
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = AVATAR_PX
+  const ctx = canvas.getContext('2d')
+  // Clamp to the image: rounding in the cropper's transform can land a
+  // fraction of a pixel outside it, which draws a transparent edge.
+  const side = Math.min(size, img.width, img.height)
+  const x = Math.max(0, Math.min(img.width - side, sx))
+  const y = Math.max(0, Math.min(img.height - side, sy))
+  ctx.drawImage(img, x, y, side, side, 0, 0, AVATAR_PX, AVATAR_PX)
+  return canvas.toDataURL('image/jpeg', 0.82)
 }
 
 /**
