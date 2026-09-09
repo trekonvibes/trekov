@@ -4,7 +4,8 @@ import {
 } from '../lib/store'
 import { encodeTrip, shareLink } from '../lib/share'
 import { mapsUrl } from '../lib/format'
-import { BackIcon, CalendarIcon, CloseIcon, SendIcon } from './Icons'
+import { BackIcon, CalendarIcon, CloseIcon, PlusIcon, SendIcon } from './Icons'
+import AddStop from './AddStop'
 import Bookings from './Bookings'
 import Invite from './Invite'
 
@@ -19,6 +20,7 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
   const places = useStore((s) => s.places)
   const [msg, setMsg] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [addingStop, setAddingStop] = useState(false)
   const [link, setLink] = useState('')
 
   const stops = trip.stops.map((s) => ({ ...s, place: getPlace(s.placeId) })).filter((s) => s.place)
@@ -30,6 +32,8 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
     setMsg(MSG[result])
     if (result !== 'failed') setTimeout(() => setMsg(''), 2600)
   }
+
+  const flash = (text) => { setMsg(text); setTimeout(() => setMsg(''), 2200) }
 
   const field = 'bg-raised rounded-xl px-3 py-2 text-sm outline-none placeholder:text-mist focus:ring-2 focus:ring-brand/50'
 
@@ -74,13 +78,26 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
           className={`${field} w-full min-h-20 resize-none`}
         />
 
-        <h2 className="text-xs uppercase tracking-[0.14em] text-mist pt-2">Itinerary</h2>
+        <div className="flex items-center justify-between pt-2">
+          <h2 className="text-xs uppercase tracking-[0.14em] text-mist">
+            Itinerary{stops.length > 0 && ` · ${stops.length}`}
+          </h2>
+          <button onClick={() => setAddingStop((v) => !v)}
+                  className="flex items-center gap-1 text-xs font-semibold text-brand">
+            <PlusIcon size={14} /> Add
+          </button>
+        </div>
 
-        {stops.length === 0 ? (
+        {addingStop && (
+          <AddStop trip={trip} onAdded={(name) => { setAddingStop(false); flash(`${name} added`) }} />
+        )}
+
+        {stops.length === 0 && !addingStop ? (
           <p className="text-sm text-mist leading-relaxed py-6">
-            No stops yet. Open a place on the map and choose <span className="text-brand">Add to trip</span>.
+            No stops yet. Add one above, or open a place on the map and choose{' '}
+            <span className="text-brand">Add to trip</span>.
           </p>
-        ) : (
+        ) : stops.length === 0 ? null : (
           <ol className="space-y-3">
             {stops.map((s, i) => (
               <li key={s.placeId} className="bg-surface border border-line rounded-2xl p-3">
