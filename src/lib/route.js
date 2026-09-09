@@ -274,6 +274,131 @@ export function instruction(step) {
   }
 }
 
+/** The previous waypoint route, kept for keys without the Routes API. */
+async function directionsTrip(origin, stops, mode) {
+  const gm = await loadGoogleMaps()
+  const svc = new gm.DirectionsService()
+  const res = await svc.route({
+    origin,
+    destination: stops.at(-1),
+    waypoints: stops.slice(0, -1).map((s) => ({ location: s, stopover: true })),
+    travelMode: TRAVEL[mode] ?? 'DRIVING',
+    ...(mode === 'car'
+      ? { drivingOptions: { departureTime: new Date(), trafficModel: 'BEST_GUESS' } }
+      : {}),
+  })
+  const r = res.routes?.[0]
+  if (!r?.legs?.length) throw new Error('no route')
+
+  let cumulative = 0
+  return {
+    at: Date.now(), via: 'google', mode,
+    coordinates: r.overview_path.map((p) => [p.lat(), p.lng()]),
+    legs: r.legs.map((leg, i) => {
+      // Named `secs` rather than `seconds`: that is a module-level helper for
+      // the Routes API's "123s" strings, and shadowing it here invites a very
+      // quiet bug the day someone reaches for it.
+      const secs = leg.duration_in_traffic?.value ?? leg.duration.value
+      cumulative += secs
+      return {
+        index: i,
+        distance: leg.distance.value,
+        duration: secs,
+        cumulative,
+        inTraffic: Boolean(leg.duration_in_traffic),
+      }
+    }),
+    steps: (r.legs[0]?.steps ?? []).map((st) => ({
+      text: stripHtml(st.instructions), name: '', distance: st.distance.value,
+      type: st.maneuver || '', modifier: '',
+      lat: st.start_location.lat(), lng: st.start_location.lng(),
+    })),
+  }
+}
+
+/**
+ * The same Routes API call, but through every stop in order.
+ *
+ * `intermediates` gives one leg per hop — which is what the itinerary panel
+ * needs for per-destination distance and ETA — while the speed readings still
+ * come back for the whole polyline, so a trip route is coloured exactly like a
+ * single-destination one.
+ */
+const ROUTES_TRIP_FIELDS = [
+  'routes.distanceMeters', 'routes.duration', 'routes.staticDuration',
+  'routes.polyline.encodedPolyline',
+  'routes.legs.distanceMeters', 'routes.legs.duration', 'routes.legs.staticDuration',
+  'routes.legs.steps.navigationInstruction', 'routes.legs.steps.distanceMeters',
+  'routes.legs.steps.startLocation',
+  'routes.travelAdvisory.speedReadingIntervals',
+].join(',')
+
+const asPoint = (p) => ({ location: { latLng: { latitude: p.lat, longitude: p.lng } } })
+
+async function routesApiTrip(origin, stops, mode) {
+  if (!MAPS_KEY) throw new Error('no key')
+  const res = await fetch(ROUTES_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': MAPS_KEY,
+      'X-Goog-FieldMask': ROUTES_TRIP_FIELDS,
+    },
+    body: JSON.stringify({
+      origin: asPoint(origin),
+      destination: asPoint(stops.at(-1)),
+      intermediates: stops.slice(0, -1).map(asPoint),
+      travelMode: mode === 'bike' ? 'TWO_WHEELER' : 'DRIVE',
+      routingPreference: 'TRAFFIC_AWARE',
+      extraComputations: ['TRAFFIC_ON_POLYLINE'],
+      polylineQuality: 'OVERVIEW',
+      languageCode: navigator.language || 'en',
+      units: 'METRIC',
+    }),
+  })
+  if (!res.ok) throw new Error(`Routes ${res.status}`)
+  const data = await res.json()
+  const r = data.routes?.[0]
+  if (!r?.polyline?.encodedPolyline || !r.legs?.length) throw new Error('no route')
+
+  const encoded = r.polyline.encodedPolyline
+  let cumulative = 0
+  return {
+    at: Date.now(), via: 'routes', mode,
+    encoded,
+    coordinates: decodePolyline(encoded),
+    traffic: (r.travelAdvisory?.speedReadingIntervals ?? [])
+      .filter((i) => i.speed && i.speed !== 'NORMAL')
+      .map((i) => ({
+        start: i.startPolylinePointIndex ?? 0,
+        end: i.endPolylinePointIndex ?? 0,
+        speed: i.speed,
+      })),
+    legs: r.legs.map((leg, i) => {
+      const withTraffic = seconds(leg.duration)
+      const free = seconds(leg.staticDuration)
+      cumulative += withTraffic
+      return {
+        index: i,
+        distance: leg.distanceMeters ?? 0,
+        duration: withTraffic,
+        cumulative,
+        // Flagged only when traffic is actually costing this leg time.
+        inTraffic: free != null && withTraffic > free,
+      }
+    }),
+    // Parity with what this returned before: the first leg's turns. Guidance
+    // past the first stop is a separate gap, not something to change here.
+    steps: (r.legs[0]?.steps ?? []).map((st) => ({
+      text: st.navigationInstruction?.instructions ?? '',
+      name: '', distance: st.distanceMeters ?? 0,
+      type: st.navigationInstruction?.maneuver || '', modifier: '',
+      lat: st.startLocation?.latLng?.latitude,
+      lng: st.startLocation?.latLng?.longitude,
+    })),
+  }
+}
+
 /**
  * A route through every remaining stop of a trip, in order.
  *
@@ -288,44 +413,16 @@ export async function getTripRoute(origin, stops, mode = 'car') {
               stops.map((s) => `${s.lat.toFixed(3)},${s.lng.toFixed(3)}`).join(';')
   const cache = readCache()
   const hit = cache[key]
-  if (!navigator.onLine) return hit ? { ...hit, cached: true, stale: true } : null
+  if (!navigator.onLine) return hit ? { ...hydrate(hit), traffic: [], cached: true, stale: true } : null
 
   try {
     let route
     try {
-      const gm = await loadGoogleMaps()
-      const svc = new gm.DirectionsService()
-      const res = await svc.route({
-        origin,
-        destination: stops.at(-1),
-        waypoints: stops.slice(0, -1).map((s) => ({ location: s, stopover: true })),
-        travelMode: TRAVEL[mode] ?? 'DRIVING',
-        ...(mode === 'car'
-          ? { drivingOptions: { departureTime: new Date(), trafficModel: 'BEST_GUESS' } }
-          : {}),
-      })
-      const r = res.routes?.[0]
-      if (!r?.legs?.length) throw new Error('no route')
-      let cumulative = 0
-      route = {
-        at: Date.now(), via: 'google', mode,
-        coordinates: r.overview_path.map((p) => [p.lat(), p.lng()]),
-        legs: r.legs.map((leg, i) => {
-          const seconds = leg.duration_in_traffic?.value ?? leg.duration.value
-          cumulative += seconds
-          return {
-            index: i,
-            distance: leg.distance.value,
-            duration: seconds,
-            cumulative,
-            inTraffic: Boolean(leg.duration_in_traffic),
-          }
-        }),
-        steps: (r.legs[0]?.steps ?? []).map((st) => ({
-          text: stripHtml(st.instructions), name: '', distance: st.distance.value,
-          type: st.maneuver || '', modifier: '',
-          lat: st.start_location.lat(), lng: st.start_location.lng(),
-        })),
+      try {
+        route = await routesApiTrip(origin, stops, mode)
+      } catch (e) {
+        console.info('Trekov: Routes API trip unavailable, falling back —', e.message)
+        route = await directionsTrip(origin, stops, mode)
       }
     } catch (e) {
       console.info('Trekov: waypoint routing unavailable —', e.message)
@@ -346,11 +443,11 @@ export async function getTripRoute(origin, stops, mode = 'car') {
 
     route.distance = route.legs.reduce((n, l) => n + l.distance, 0)
     route.duration = route.legs.reduce((n, l) => n + l.duration, 0)
-    cache[key] = route
+    cache[key] = dehydrate(route)
     writeCache(cache)
     return { ...route, cached: false, stale: false }
   } catch (e) {
     console.warn('Trekov: trip routing failed', e)
-    return hit ? { ...hit, cached: true, stale: true } : null
+    return hit ? { ...hydrate(hit), traffic: [], cached: true, stale: true } : null
   }
 }
