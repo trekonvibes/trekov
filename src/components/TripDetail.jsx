@@ -7,6 +7,7 @@ import { mapsUrl } from '../lib/format'
 import { BackIcon, CalendarIcon, CloseIcon, PlusIcon, SendIcon } from './Icons'
 import AddStop from './AddStop'
 import Bookings from './Bookings'
+import TripSuggestions from './TripSuggestions'
 import Invite from './Invite'
 
 const MSG = {
@@ -143,6 +144,8 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
             ))}
           </ol>
         )}
+
+        <TripSuggestions trip={trip} places={places} onOpenPlace={onOpenPlace} />
 
         {trip.kind === 'group' ? (
           <Invite trip={trip} />

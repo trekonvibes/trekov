@@ -134,3 +134,6 @@ export const ExternalIcon = (p) => (
 export const PhoneIcon = (p) => (
   <Icon {...p}><path d="M7.5 3.5 9.8 8l-2 1.9a12 12 0 0 0 6.3 6.3l1.9-2 4.5 2.3v3a1.5 1.5 0 0 1-1.7 1.5C11.6 20.2 3.8 12.4 3.2 5.2A1.5 1.5 0 0 1 4.7 3.5Z" /></Icon>
 )
+export const FuelIcon = (p) => (
+  <Icon {...p}><path d="M4 20V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15M3 20h10M6 9h4" /><path d="M15 12h2.5a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V9.5L19 6.5" /></Icon>
+)

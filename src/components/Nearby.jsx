@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CATEGORIES, findNearby } from '../lib/nearby'
 import { adoptHit } from '../lib/adopt'
 import {
-  BackIcon, BedIcon, BowlIcon, CarIcon, CutleryIcon, KeyIcon, MotorcycleIcon, MountainIcon,
+  BackIcon, BedIcon, BowlIcon, CarIcon, CutleryIcon, FuelIcon, KeyIcon, MotorcycleIcon, MountainIcon,
   PhoneIcon, StarIcon,
 } from './Icons'
 
@@ -13,6 +13,7 @@ const ICONS = {
   street_food: BowlIcon,
   bike_service: MotorcycleIcon,
   car_service: CarIcon,
+  fuel: FuelIcon,
   rental: KeyIcon,
   attraction: MountainIcon,
 }
