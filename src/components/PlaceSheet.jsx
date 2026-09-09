@@ -15,6 +15,10 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
   const [openPost, setOpenPost] = useState(null)
   const [rating, setRating] = useState(false)
   const [tripMenu, setTripMenu] = useState(false)
+  // The per-category bars are collapsed by default: five of them pushed the
+  // photo credit and everyone else's shots off the screen, and the number
+  // most people want is the one on the front.
+  const [breakdown, setBreakdown] = useState(false)
   const [toast, setToast] = useState('')
 
   const place = useStore((s) => selectPlace(s, placeId))
@@ -153,37 +157,50 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                 </ul>
               )}
 
-              <button onClick={() => setRating(true)}
-                      className="mt-2 w-full rounded-2xl border border-line hover:border-brand/60 transition p-3 text-left">
+              <div className="mt-2 rounded-2xl border border-line overflow-hidden">
                 {ratings ? (
                   <>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-semibold tabular-nums">{ratings.overall.toFixed(1)}</span>
-                      <span className="text-xs text-mist">/ 5 · {ratings.count} review{ratings.count === 1 ? '' : 's'}</span>
-                      <span className="ml-auto text-xs text-brand font-semibold">Rate it</span>
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <span className="text-base font-semibold tabular-nums">{ratings.overall.toFixed(1)}</span>
+                      <span className="text-[11px] text-mist">
+                        / 5 · {ratings.count} review{ratings.count === 1 ? '' : 's'}
+                      </span>
+                      <button onClick={() => setBreakdown((v) => !v)}
+                              aria-expanded={breakdown}
+                              className="text-[11px] text-mist hover:text-white underline underline-offset-2">
+                        {breakdown ? 'Hide' : 'Breakdown'}
+                      </button>
+                      <button onClick={() => setRating(true)}
+                              className="ml-auto text-xs text-brand font-semibold">
+                        Rate it
+                      </button>
                     </div>
-                    <div className="mt-2 space-y-1">
-                      {RATING_CATEGORIES.filter((c) => ratings.byCategory[c.id] != null).map((c) => (
-                        <div key={c.id} className="flex items-center gap-2">
-                          <span className="text-[11px] text-mist w-24 shrink-0">{c.label}</span>
-                          <span className="h-1.5 flex-1 rounded-full bg-raised overflow-hidden">
-                            <span className="block h-full bg-brand"
-                                  style={{ width: `${(ratings.byCategory[c.id] / 5) * 100}%` }} />
-                          </span>
-                          <span className="text-[11px] text-mist tabular-nums w-7 text-right">
-                            {ratings.byCategory[c.id].toFixed(1)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+
+                    {breakdown && (
+                      <div className="px-3 pb-3 space-y-1">
+                        {RATING_CATEGORIES.filter((c) => ratings.byCategory[c.id] != null).map((c) => (
+                          <div key={c.id} className="flex items-center gap-2">
+                            <span className="text-[11px] text-mist w-24 shrink-0">{c.label}</span>
+                            <span className="h-1.5 flex-1 rounded-full bg-raised overflow-hidden">
+                              <span className="block h-full bg-brand"
+                                    style={{ width: `${(ratings.byCategory[c.id] / 5) * 100}%` }} />
+                            </span>
+                            <span className="text-[11px] text-mist tabular-nums w-7 text-right">
+                              {ratings.byCategory[c.id].toFixed(1)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 ) : (
-                  <span className="flex items-center justify-between">
+                  <button onClick={() => setRating(true)}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-surface">
                     <span className="text-sm text-mist">No ratings yet</span>
                     <span className="text-xs text-brand font-semibold">Be the first to rate</span>
-                  </span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
 
             {post && (
