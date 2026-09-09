@@ -212,21 +212,31 @@ export default function Navigate({ place, trip, me, onClose }) {
     routeLines.current.forEach((l) => l.remove())
     routeLines.current = []
     if (!route?.coordinates?.length) return
-    // Traffic colours are painted on the road itself, and a solid route line
-    // lands straight on top of them — the one stretch you most need to see
-    // ahead is the one stretch the route hides. With traffic on, the route
-    // becomes a translucent highlight band instead: wider, so it still reads
-    // at a glance, and sheer enough for amber and red to come through it.
-    routeLines.current = (trafficShown
-      ? [
-          { color: '#0B0F0E', weight: 13, opacity: .28, back: true },
-          { color: '#3DDC97', weight: 9, opacity: .34 },
-        ]
-      : [
-          { color: '#0B0F0E', weight: 9, opacity: .5, back: true },
-          { color: '#00C08B', weight: 5, opacity: .9 },
-        ]
-    ).map((style) => d.polyline(route.coordinates, style))
+    // How Google does it: the route stays a solid, opaque line, and traffic is
+    // painted onto the route itself rather than left to show through from the
+    // road underneath. Dimming the line to reveal the map below cost more
+    // legibility than it bought.
+    //
+    // Only the slow stretches are drawn over the base line — clear road is
+    // already the route's own colour.
+    const lines = [
+      d.polyline(route.coordinates, { color: '#06120D', weight: 11, opacity: .55, back: true }),
+      d.polyline(route.coordinates, { color: '#00C08B', weight: 6, opacity: .95 }),
+    ]
+
+    if (trafficShown) {
+      for (const jam of route.traffic ?? []) {
+        const part = route.coordinates.slice(jam.start, jam.end + 1)
+        if (part.length < 2) continue
+        lines.push(d.polyline(part, {
+          color: jam.speed === 'TRAFFIC_JAM' ? '#FF3B4E' : '#FFB33E',
+          weight: 6,
+          opacity: 1,
+        }))
+      }
+    }
+
+    routeLines.current = lines
   }, [route, engine, trafficShown])
 
   // Comet trail of recent fixes: one line per segment, since neither engine
@@ -242,16 +252,10 @@ export default function Navigate({ place, trip, me, onClose }) {
       const k = i / (pts.length - 1)
       trailLines.current.push(d.polyline(
         [[pts[i - 1].lat, pts[i - 1].lng], [pts[i].lat, pts[i].lng]],
-        // The trail is a green line on the road too, so it thins out with
-        // traffic on for the same reason the route does.
-        {
-          color: '#3DDC97',
-          opacity: (0.08 + k * 0.55) * (trafficShown ? 0.5 : 1),
-          weight: 2 + k * 4,
-        },
+        { color: '#3DDC97', opacity: 0.08 + k * 0.55, weight: 2 + k * 4 },
       ))
     }
-  }, [pos, moving, engine, trafficShown])
+  }, [pos, moving, engine])
 
   // Our own marker: the chosen vehicle in the chosen colour, rotated to the
   // way we are moving. Rotation lives on the outer node, motion on the inner.

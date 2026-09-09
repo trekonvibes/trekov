@@ -7,6 +7,7 @@
 
 import { loadGoogleMaps } from './gmaps'
 
+const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const HOST = 'https://router.project-osrm.org'
 const TRAVEL = { car: 'DRIVING', bike: 'TWO_WHEELER' }
 const stripHtml = (h) => (h || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -26,7 +27,8 @@ function writeCache(cache) {
   try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(entries))) } catch {}
 }
 
-export const cachedRoute = (from, to, profile = 'driving') => readCache()[routeKey(from, to, profile)] ?? null
+export const cachedRoute = (from, to, profile = 'driving') =>
+  hydrate(readCache()[routeKey(from, to, profile)]) ?? null
 
 async function osrmRoute(from, to, mode) {
   // The demo server only carries the driving profile; a bike gets the same
@@ -47,6 +49,125 @@ async function osrmRoute(from, to, mode) {
       text: '', name: s.name, distance: s.distance,
       type: s.maneuver?.type, modifier: s.maneuver?.modifier,
       lat: s.maneuver?.location?.[1], lng: s.maneuver?.location?.[0],
+    })),
+  }
+}
+
+/**
+ * Routes API v2, which is the only Google endpoint that reports traffic along
+ * the route rather than just a slower total.
+ *
+ * TRAFFIC_ON_POLYLINE comes back as speed readings over ranges of polyline
+ * points — NORMAL, SLOW, TRAFFIC_JAM — which is exactly how Google's own
+ * navigation paints amber and red onto the line you are following. Legacy
+ * Directions cannot do this at all; it only ever returned duration_in_traffic.
+ *
+ * Needs the Routes API enabled on the key, separately from Directions. When it
+ * is not, this throws and the caller drops to Directions without traffic
+ * colouring.
+ */
+const ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes'
+const ROUTES_FIELDS = [
+  'routes.distanceMeters', 'routes.duration', 'routes.staticDuration',
+  'routes.polyline.encodedPolyline',
+  'routes.legs.steps.navigationInstruction', 'routes.legs.steps.distanceMeters',
+  'routes.legs.steps.startLocation',
+  'routes.travelAdvisory.speedReadingIntervals',
+].join(',')
+
+const seconds = (s) => (typeof s === 'string' ? Number(s.replace('s', '')) : null)
+
+/**
+ * Decode Google's encoded polyline.
+ *
+ * Written out rather than borrowed from gm.geometry so a cached route can be
+ * rehydrated with no network: Google Maps cannot load offline, which is
+ * exactly when the cache matters. It also lets the cache hold the encoded
+ * string — a third the size of the decoded pairs, which is the difference
+ * between fitting in localStorage and quietly failing to save.
+ */
+function decodePolyline(str) {
+  const out = []
+  let i = 0, lat = 0, lng = 0
+  while (i < str.length) {
+    let b, shift = 0, result = 0
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1)
+    shift = 0; result = 0
+    do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 0x20)
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1)
+    out.push([lat / 1e5, lng / 1e5])
+  }
+  return out
+}
+
+/** Cached routes travel encoded; the coordinates come back on read. */
+const hydrate = (r) =>
+  r && r.encoded && !r.coordinates?.length ? { ...r, coordinates: decodePolyline(r.encoded) } : r
+const dehydrate = (r) => (r?.encoded ? { ...r, coordinates: undefined } : r)
+
+async function routesApiRoute(gm, from, to, mode) {
+  if (!MAPS_KEY) throw new Error('no key')
+  const body = {
+    origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
+    destination: { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
+    travelMode: mode === 'bike' ? 'TWO_WHEELER' : 'DRIVE',
+    routingPreference: 'TRAFFIC_AWARE',
+    extraComputations: ['TRAFFIC_ON_POLYLINE'],
+    // OVERVIEW, not HIGH_QUALITY: the same traffic intervals come back either
+    // way, and HIGH_QUALITY's 59,000 points for one long route is more than
+    // the map needs to draw and far more than the cache can hold.
+    polylineQuality: 'OVERVIEW',
+    // Without these the Routes API picks a language from where the route is,
+    // not from who is reading it — an English phone routing through Gujarat
+    // came back with Assamese turn instructions.
+    languageCode: navigator.language || 'en',
+    units: 'METRIC',
+  }
+  const res = await fetch(ROUTES_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': MAPS_KEY,
+      'X-Goog-FieldMask': ROUTES_FIELDS,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`Routes ${res.status}`)
+  const data = await res.json()
+  const r = data.routes?.[0]
+  if (!r?.polyline?.encodedPolyline) throw new Error('no route')
+
+  const encoded = r.polyline.encodedPolyline
+  const coordinates = decodePolyline(encoded)
+
+  const total = seconds(r.duration)
+  const free = seconds(r.staticDuration)
+
+  return {
+    at: Date.now(), via: 'routes', mode, modeFallback: false,
+    distance: r.distanceMeters,
+    duration: free ?? total,
+    // Only meaningful when traffic is actually costing time.
+    durationInTraffic: total != null && free != null && total > free ? total : null,
+    encoded,
+    coordinates,
+    // Point ranges into `coordinates`. NORMAL stretches are left out: the
+    // route's own colour already says "clear", and carrying them would mean
+    // redrawing the whole line in the colour it already is.
+    traffic: (r.travelAdvisory?.speedReadingIntervals ?? [])
+      .filter((i) => i.speed && i.speed !== 'NORMAL')
+      .map((i) => ({
+        start: i.startPolylinePointIndex ?? 0,
+        end: i.endPolylinePointIndex ?? 0,
+        speed: i.speed,
+      })),
+    steps: (r.legs?.[0]?.steps ?? []).map((s) => ({
+      text: s.navigationInstruction?.instructions ?? '',
+      name: '', distance: s.distanceMeters ?? 0,
+      type: s.navigationInstruction?.maneuver || '', modifier: '',
+      lat: s.startLocation?.latLng?.latitude,
+      lng: s.startLocation?.latLng?.longitude,
     })),
   }
 }
@@ -101,22 +222,33 @@ export async function getRoute(from, to, mode = 'car') {
   const cache = readCache()
   const hit = cache[key]
 
-  if (!navigator.onLine) return hit ? { ...hit, cached: true, stale: true } : null
+  // A cached route's traffic is as old as the cache. Showing yesterday's jam
+  // as though it were live is worse than showing none.
+  if (!navigator.onLine) return hit ? { ...hydrate(hit), traffic: [], cached: true, stale: true } : null
 
   try {
     let route
+    const gm = await loadGoogleMaps().catch(() => null)
     try {
-      route = await googleRoute(await loadGoogleMaps(), from, to, mode)
+      if (!gm) throw new Error('Google Maps unavailable')
+      try {
+        route = await routesApiRoute(gm, from, to, mode)
+      } catch (e) {
+        // Most often the Routes API is simply not enabled on the key. The
+        // route still works; it just arrives without traffic colouring.
+        console.info('Trekov: Routes API unavailable, falling back —', e.message)
+        route = await googleRoute(gm, from, to, mode)
+      }
     } catch (e) {
       console.info('Trekov: Google directions unavailable —', e.message)
       route = await osrmRoute(from, to, mode)
     }
-    cache[key] = route
+    cache[key] = dehydrate(route)
     writeCache(cache)
     return { ...route, cached: false, stale: false }
   } catch (e) {
     console.warn('Trekov: routing failed', e)
-    return hit ? { ...hit, cached: true, stale: true } : null
+    return hit ? { ...hydrate(hit), traffic: [], cached: true, stale: true } : null
   }
 }
 
