@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { addMember, removeMember, selectMembers, useStore } from '../lib/store'
+import {
+  addMember, removeMember, selectMembers, selectSharing, setSharing, toggleSharingWith, useStore,
+} from '../lib/store'
 import { grantTripAccess, inviteLinks, searchProfiles } from '../lib/people'
 import { encodeTrip } from '../lib/share'
 import { CloseIcon, SearchIcon } from './Icons'
@@ -14,6 +16,7 @@ const CHANNELS = [
 export default function Invite({ trip }) {
   const places = useStore((s) => s.places)
   const members = useStore((s) => selectMembers(s, trip.id))
+  const sharing = useStore((s) => selectSharing(s, trip.id))
   const [q, setQ] = useState('')
   const [found, setFound] = useState([])
   const [searching, setSearching] = useState(false)
@@ -52,18 +55,59 @@ export default function Invite({ trip }) {
 
       {members.length > 0 && (
         <ul className="space-y-1.5 mb-3">
-          {members.map((m) => (
-            <li key={m.id} className="flex items-center gap-2 bg-surface border border-line rounded-xl px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm">
-                @{m.handle}{m.name && m.name !== m.handle && <span className="text-mist"> · {m.name}</span>}
-              </span>
-              <button onClick={() => removeMember(trip.id, m.id)}
-                      className="text-mist hover:text-rose p-1" aria-label={`Remove ${m.handle}`}>
-                <CloseIcon size={15} />
-              </button>
-            </li>
-          ))}
+          {members.map((m) => {
+            const hidden = sharing.hiddenFrom.includes(m.id)
+            return (
+              <li key={m.id} className="flex items-center gap-2 bg-surface border border-line rounded-xl px-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  @{m.handle}{m.name && m.name !== m.handle && <span className="text-mist"> · {m.name}</span>}
+                </span>
+
+                {/* Per-person, so one awkward companion does not cost you the
+                    whole group map. Disabled while sharing is off entirely —
+                    there is nothing to hide from anyone. */}
+                <button onClick={() => toggleSharingWith(trip.id, m.id)}
+                        disabled={!sharing.on}
+                        aria-pressed={!hidden}
+                        title={hidden ? `${m.handle} cannot see your location` : `${m.handle} can see your location`}
+                        className={`text-[10px] font-semibold rounded-full px-2 py-1 border shrink-0 disabled:opacity-40
+                                    ${hidden ? 'border-line text-mist' : 'border-brand/60 text-brand'}`}>
+                  {hidden ? 'Hidden' : 'Sharing'}
+                </button>
+
+                <button onClick={() => removeMember(trip.id, m.id)}
+                        className="text-mist hover:text-rose p-1" aria-label={`Remove ${m.handle}`}>
+                  <CloseIcon size={15} />
+                </button>
+              </li>
+            )
+          })}
         </ul>
+      )}
+
+      {/* The master switch. Off means nothing is broadcast at all. */}
+      <div className="flex items-start gap-3 rounded-xl border border-line bg-surface px-3 py-2.5 mb-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Share my live location</p>
+          <p className="text-[11px] text-mist leading-snug mt-0.5">
+            {sharing.on
+              ? 'The others see you move on the map while you navigate.'
+              : 'Nothing leaves your phone. You still see everyone else.'}
+          </p>
+        </div>
+        <button onClick={() => setSharing(trip.id, !sharing.on)}
+                aria-pressed={sharing.on}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold border transition
+                            ${sharing.on ? 'bg-brand/15 text-brand border-brand' : 'border-line text-mist'}`}>
+          {sharing.on ? 'On' : 'Off'}
+        </button>
+      </div>
+
+      {sharing.on && sharing.hiddenFrom.length > 0 && (
+        <p className="text-[10px] text-mist mb-3 leading-relaxed">
+          Hidden from {sharing.hiddenFrom.length} {sharing.hiddenFrom.length === 1 ? 'person' : 'people'}.
+          Their app is asked not to show you — switching sharing off is the one that sends nothing at all.
+        </p>
       )}
 
       <div className="flex items-center gap-2 bg-raised rounded-xl px-3 py-2.5">

@@ -8,7 +8,7 @@ import { colourFor, joinParty } from '../lib/party'
 import { downloadTiles, tilesForRoute } from '../lib/offline'
 import { createMap } from '../lib/mapDrivers'
 import { COLOURS, vehicleSvg } from '../lib/vehicleArt'
-import { getPlace } from '../lib/store'
+import { getPlace, selectSharing, useStore } from '../lib/store'
 import { BackIcon, CalendarIcon, Logo } from './Icons'
 import { VEHICLES } from './VehicleIcons'
 import Voice from './Voice'
@@ -40,6 +40,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   const trailLines = useRef([])
   const partyMarkers = useRef([])
   const partyRef = useRef(null)
+  const sharing = useStore((s) => selectSharing(s, trip?.id))
   const lastPos = useRef(null)
   const trail = useRef([])
   // Snap to NAV_ZOOM on the first fix and whenever the user recentres; in
@@ -326,9 +327,12 @@ export default function Navigate({ place, trip, me, onClose }) {
   // Companions see the vehicle you actually chose, pointing the way you drive.
   useEffect(() => {
     if (shown && partyRef.current) {
-      partyRef.current.update(shown, { vehicle, colour, heading: course, moving })
+      partyRef.current.update(shown, {
+        vehicle, colour, heading: course, moving,
+        share: sharing.on, hideFrom: sharing.hiddenFrom,
+      })
     }
-  }, [shown, vehicle, colour, course, moving])
+  }, [shown, vehicle, colour, course, moving, sharing.on, sharing.hiddenFrom])
 
   useEffect(() => {
     const d = drv.current

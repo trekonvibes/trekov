@@ -539,6 +539,42 @@ export const removeMember = (tripId, personId) =>
   patchTrip(tripId, (t) => ({ ...t, members: (t.members ?? []).filter((m) => m.id !== personId) }))
 
 export const selectMembers = memo((s, tripId) => s.trips.find((t) => t.id === tripId)?.members ?? [])
+
+/* ------------------------------------------------------ location sharing --
+ * Who on a trip may see where you are.
+ *
+ * Two switches rather than one, because "I am on this trip" and "you may
+ * watch me move" are different consents. `sharing` is the master: off means
+ * nobody sees you, whatever else is set. `hiddenFrom` excludes named people
+ * while the rest of the group still sees you — for the times you want the
+ * group map without one particular person on it.
+ *
+ * Default is on, because a group trip whose map is empty by default is a
+ * feature nobody finds. It is one tap to leave.
+ */
+export const selectSharing = memo((s, tripId) => {
+  const t = s.trips.find((x) => x.id === tripId)
+  return { on: t?.sharing !== false, hiddenFrom: t?.hiddenFrom ?? [] }
+})
+
+export const setSharing = (tripId, on) => patchTrip(tripId, (t) => ({ ...t, sharing: on }))
+
+export const toggleSharingWith = (tripId, memberId) =>
+  patchTrip(tripId, (t) => {
+    const hidden = t.hiddenFrom ?? []
+    return {
+      ...t,
+      hiddenFrom: hidden.includes(memberId)
+        ? hidden.filter((id) => id !== memberId)
+        : [...hidden, memberId],
+    }
+  })
+
+/** True when this trip's position may be broadcast at all. */
+export const isSharing = (tripId) => {
+  const t = state.trips.find((x) => x.id === tripId)
+  return t?.sharing !== false
+}
 export const deleteTrip = (id) => set({ ...state, trips: state.trips.filter((t) => t.id !== id) })
 
 export function addStop(tripId, placeId) {

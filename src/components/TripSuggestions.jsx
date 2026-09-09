@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
-import { alongRoute, attractionsNear, staysNear, tripTolls } from '../lib/suggest'
+import {
+  alongRoute, alongRouteAttractions, attractionsNear, staysNear, tripTolls,
+} from '../lib/suggest'
 import { getTripRoute } from '../lib/route'
-import { BedIcon, CarIcon, MotorcycleIcon, MountainIcon, PhoneIcon, StarIcon } from './Icons'
+import { addStop } from '../lib/store'
+import { adoptHit } from '../lib/adopt'
+import {
+  BedIcon, CarIcon, MotorcycleIcon, MountainIcon, PhoneIcon, PlusIcon, StarIcon,
+} from './Icons'
 import NavigateSheet from './NavigateSheet'
 import { bookingUrl, BOOKING_DISCLOSURE, hasBooking } from '../lib/affiliate'
 
@@ -29,12 +35,22 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
   // somewhere they might actually drive, so every row leads to the same
   // handoff the rest of the app uses.
   const [navTo, setNavTo] = useState(null)
+  const [onRoute, setOnRoute] = useState([])
+  const [added, setAdded] = useState('')
 
   const last = stops.at(-1)
 
   /** A search result as the navigation sheet expects a place. */
   const asPlace = (r) => ({ id: r.id, name: r.name, region: r.detail ?? '', lat: r.lat, lng: r.lng })
   const canNavigate = (r) => r.lat != null && r.lng != null
+
+  /** Put a suggestion in the itinerary, adopting it into the atlas first. */
+  function addToTrip(r) {
+    addStop(trip.id, adoptHit(r))
+    setAdded(r.name)
+    setTimeout(() => setAdded(''), 2200)
+  }
+  const alreadyAStop = (r) => trip.stops.some((s) => s.placeId === `pl_g_${r.id}`)
 
   useEffect(() => {
     if (stops.length === 0) return
@@ -47,9 +63,18 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
       staysNear(last).then((s) => live && setStays(s)),
       attractionsNear(last).then((a) => live && setSeeThere(a)),
       stops.length >= 2
-        ? getTripRoute(stops[0], stops.slice(1), 'car')
-            .then((r) => (r?.coordinates ? alongRoute(r.coordinates) : []))
-            .then((g) => live && setOnTheWay(g))
+        ? getTripRoute(stops[0], stops.slice(1), 'car').then(async (r) => {
+            if (!r?.coordinates) return
+            // One route fetch feeds both: what you need on the way, and what
+            // is worth stopping for on the way.
+            const [groups, attractions] = await Promise.all([
+              alongRoute(r.coordinates),
+              alongRouteAttractions(r.coordinates),
+            ])
+            if (!live) return
+            setOnTheWay(groups)
+            setOnRoute(attractions)
+          })
         : null,
     ].filter(Boolean)
 
@@ -145,6 +170,46 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
         </div>
       )}
 
+      {/* ------------------------------------------------- worth a stop en route */}
+      {onRoute.length > 0 && (
+        <div className="rounded-2xl border border-line bg-surface p-3">
+          <h3 className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-mist mb-2">
+            <MountainIcon size={13} /> Worth a stop on the way
+          </h3>
+          <ul className="space-y-1.5">
+            {onRoute.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 text-[12px]">
+                <button onClick={() => canNavigate(a) && setNavTo(asPlace(a))}
+                        className="min-w-0 flex-1 text-left hover:text-brand">
+                  <span className="block truncate">{a.name}</span>
+                  <span className="block text-[10px] text-mist">
+                    {a.detourKm < 1
+                      ? 'on the route'
+                      : `${a.detourKm.toFixed(0)} km off the route`}
+                    {a.rating != null && ` · ${a.rating.toFixed(1)}★`}
+                  </span>
+                </button>
+                <button onClick={() => addToTrip(a)}
+                        disabled={alreadyAStop(a)}
+                        className="flex items-center gap-1 shrink-0 rounded-full border border-line
+                                   px-2.5 py-1 text-[11px] font-semibold hover:border-brand
+                                   hover:text-brand disabled:opacity-40 disabled:hover:border-line">
+                  <PlusIcon size={11} /> {alreadyAStop(a) ? 'Added' : 'Add'}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-mist mt-2 leading-snug">
+            Measured from the route itself, not from the destination — so nothing here
+            is a detour you did not agree to.
+          </p>
+        </div>
+      )}
+
+      {added && (
+        <p className="text-[11px] text-brand">{added} added to the itinerary</p>
+      )}
+
       {/* ----------------------------------------------------------- stays */}
       {stays && (stays.partners.length > 0 || stays.others.length > 0) && (
         <div className="rounded-2xl border border-line bg-surface p-3">
@@ -181,6 +246,13 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
                       disabled={!canNavigate(o)}
                       className="truncate flex-1 text-left hover:text-brand disabled:hover:text-inherit">
                 {o.name}
+              </button>
+              <button onClick={() => addToTrip(o)} disabled={alreadyAStop(o)}
+                      aria-label={`Add ${o.name} to the itinerary`}
+                      className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px]
+                                 font-semibold hover:border-brand hover:text-brand
+                                 disabled:opacity-40 disabled:hover:border-line">
+                {alreadyAStop(o) ? 'Added' : 'Add'}
               </button>
               {o.rating != null && (
                 <span className="flex items-center gap-0.5 text-sun shrink-0">
@@ -243,6 +315,13 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
                     <StarIcon size={9} filled />{a.rating.toFixed(1)}
                   </span>
                 )}
+                <button onClick={() => addToTrip(a)} disabled={alreadyAStop(a)}
+                        aria-label={`Add ${a.name} to the itinerary`}
+                        className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px]
+                                   font-semibold hover:border-brand hover:text-brand
+                                   disabled:opacity-40 disabled:hover:border-line">
+                  {alreadyAStop(a) ? 'Added' : 'Add'}
+                </button>
               </li>
             ))}
           </ul>

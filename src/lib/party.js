@@ -86,6 +86,14 @@ export function joinParty(tripId, me, onMembers, transport) {
       return
     }
     if (msg.type !== 'pos') return
+    // Someone has hidden themselves from this rider specifically. Honoured
+    // rather than enforced: a broadcast channel reaches everyone, so this
+    // depends on the receiving app respecting it. Switching sharing off
+    // entirely is the enforceable one — nothing is sent at all.
+    if (Array.isArray(msg.hideFrom) && msg.hideFrom.includes(me.id)) {
+      if (members.delete(msg.id)) publish()
+      return
+    }
     members.set(msg.id, {
       id: msg.id, name: msg.name, lat: msg.lat, lng: msg.lng,
       // Carry how they look and whether they are rolling, or every companion
@@ -104,12 +112,25 @@ export function joinParty(tripId, me, onMembers, transport) {
   const beat = setInterval(() => { if (mine) transport.send(mine); prune() }, BEAT_MS)
 
   return {
+    /**
+     * @param look.share  false stops the broadcast outright — the position
+     *                    never leaves the device, and the heartbeat has
+     *                    nothing to repeat.
+     * @param look.hideFrom  member ids who should not be shown this position.
+     */
     update(position, look = {}) {
+      if (look.share === false) {
+        // Tell the others to drop the stale marker rather than leaving it
+        // frozen on their map, which reads as "stopped" rather than "hidden".
+        if (mine) { transport.send({ type: 'leave', id: me.id }); mine = null }
+        return
+      }
       mine = {
         type: 'pos', id: me.id, name: me.name,
         lat: position.lat, lng: position.lng,
         vehicle: look.vehicle, colour: look.colour, heading: look.heading,
         moving: look.moving,
+        hideFrom: look.hideFrom?.length ? look.hideFrom : undefined,
         hello: !mine,
       }
       transport.send(mine)

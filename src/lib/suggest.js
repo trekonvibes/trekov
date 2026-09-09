@@ -11,6 +11,7 @@
 
 import { supabase } from './supabase'
 import { CATEGORIES, findNearby } from './nearby'
+import { distance } from './geo'
 
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes'
@@ -125,6 +126,48 @@ export function alongRoute(coordinates, categoryIds = ['fuel', 'food'], { points
       return { id, label: CATEGORIES.find((c) => c.id === id)?.label ?? id, results: merged.slice(0, 6) }
     }))
     return groups.filter((g) => g.results.length)
+  })
+}
+
+/**
+ * Places worth stopping at that are actually on the road you are taking.
+ *
+ * The difference from "attractions near the destination" is the whole point:
+ * a fort 40 km past your turning is not on the way, however good it is. These
+ * are sampled along the route polyline and then held to a corridor — a hard
+ * distance from the nearest point of the route itself, not from its endpoints.
+ */
+export function alongRouteAttractions(coordinates, { points = 5, corridorKm = 25 } = {}) {
+  const spots = samples(coordinates, points)
+  if (!spots.length) return Promise.resolve([])
+  const key = `route-attr|${spots.map((s) => `${s.lat.toFixed(1)},${s.lng.toFixed(1)}`).join(';')}`
+  return once(key, async () => {
+    const groups = await Promise.all(spots.map((s) =>
+      findNearby('attraction', s, { radiusKm: corridorKm }).then((r) => r.results).catch(() => [])))
+
+    // How far this place sits from the route at its closest, which is the
+    // number that decides whether it is "on the way".
+    const offRoute = (p) => {
+      let best = Infinity
+      for (let i = 0; i < coordinates.length; i += 8) {
+        const d = distance({ lat: coordinates[i][0], lng: coordinates[i][1] }, { lat: p.lat, lng: p.lng })
+        if (d < best) best = d
+      }
+      return best / 1000
+    }
+
+    const seen = new Set()
+    const out = []
+    for (const p of groups.flat()) {
+      const name = p.name.toLowerCase()
+      if (seen.has(name) || p.lat == null) continue
+      seen.add(name)
+      const detour = offRoute(p)
+      if (detour <= corridorKm) out.push({ ...p, detourKm: detour })
+    }
+    // Nearest the road first: the cheapest stop to make is the one you barely
+    // leave the route for.
+    return out.sort((a, b) => a.detourKm - b.detourKm).slice(0, 8)
   })
 }
 
