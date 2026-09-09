@@ -129,7 +129,7 @@ export default function Discover({ onOpenPlace, onNavigate }) {
         )}
 
         {/* Around wherever the traveller is, or the month's attraction. */}
-        <Nearby centre={here} centreName={hereName} />
+        <Nearby centre={here} centreName={hereName} onNavigate={onNavigate} />
 
         {/* --------------------------------------------------- new places */}
         <section>

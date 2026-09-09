@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CATEGORIES, findNearby } from '../lib/nearby'
+import { adoptHit } from '../lib/adopt'
 import { BackIcon } from './Icons'
 
 const RADIUS_KM = 8
@@ -11,7 +12,7 @@ const RADIUS_KM = 8
  * and results only appear once you pick one. Showing every category's list at
  * once buried the choice under whichever list happened to load first.
  */
-export default function Nearby({ centre, centreName }) {
+export default function Nearby({ centre, centreName, onNavigate }) {
   const [category, setCategory] = useState(null)
   const [results, setResults] = useState([])
   const [state, setState] = useState('idle')
@@ -105,11 +106,24 @@ export default function Nearby({ centre, centreName }) {
                 </div>
 
                 {/* Actions pinned to the bottom so a long name does not leave
-                    the row ragged. */}
+                    the row ragged.
+
+                    Navigate is the primary one: Trekov has turn-by-turn built
+                    in, so sending someone to Google Maps to drive the last
+                    8km would be handing off the part we do ourselves. The
+                    result is adopted into the atlas on the way, because
+                    navigation runs on a place record. "Map" stays as a
+                    secondary escape hatch. */}
                 <div className="flex items-center gap-3 mt-auto pt-2 text-[11px] font-semibold">
-                  {r.phone && <a href={`tel:${r.phone}`} className="text-brand">Call</a>}
+                  {r.phone && <a href={`tel:${r.phone}`} className="text-mist hover:text-white">Call</a>}
+                  {onNavigate && r.lat != null && r.lng != null && (
+                    <button onClick={() => onNavigate(adoptHit(r))} className="text-brand">
+                      Navigate
+                    </button>
+                  )}
                   <a href={`https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`}
-                     target="_blank" rel="noreferrer" className="text-brand ml-auto">Map</a>
+                     target="_blank" rel="noreferrer"
+                     className="text-mist hover:text-white ml-auto">Map</a>
                 </div>
               </li>
             ))}

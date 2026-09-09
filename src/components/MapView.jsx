@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   addStop, createTrip, getPlace, selectPlaceSearch, selectPlaces, selectTrips,
-  toggleSavePlace, upsertPlace, useStore,
+  toggleSavePlace, useStore,
 } from '../lib/store'
 import { createMap, preferredMapType, rememberMapType } from '../lib/mapDrivers'
+import { adoptHit } from '../lib/adopt'
 import { searchAnywhere } from '../lib/geocode'
 import { CloseIcon, PlusIcon, SaveIcon, SearchIcon, Wordmark } from './Icons'
 
@@ -126,26 +127,16 @@ export default function MapView({ onOpenPlace, onNewPlace }) {
   }
 
   /**
-   * Adopt a searched spot into Trekov so it can be saved or put in a trip.
+   * Adopt a searched spot into Trekov, and announce it.
    *
-   * The id is derived from Google's place id, so searching the same spot twice
-   * lands on the same record instead of quietly creating a duplicate.
+   * A spot someone went looking for on the map is a genuine addition to the
+   * atlas, so it is worth telling other users about. Nearby results are
+   * adopted through the same helper without the announcement.
    */
   function adopt(hit) {
-    const id = `pl_g_${hit.id}`
-    if (getPlace(id)) return id
-    const [region, ...rest] = (hit.detail || '').split(',').map((x) => x.trim())
-    upsertPlace({
-      id,
-      name: hit.name,
-      region: region || '',
-      country: rest.at(-1) || '',
-      lat: hit.lat,
-      lng: hit.lng,
-      bestTime: '',
-      blurb: '',
-    })
-    onNewPlace?.(getPlace(id))
+    const existing = getPlace(`pl_g_${hit.id}`)
+    const id = adoptHit(hit)
+    if (!existing) onNewPlace?.(getPlace(id))
     return id
   }
 
