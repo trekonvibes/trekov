@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { alongRoute, attractionsNear, staysNear, tripTolls } from '../lib/suggest'
 import { getTripRoute } from '../lib/route'
 import { BedIcon, CarIcon, MotorcycleIcon, MountainIcon, PhoneIcon, StarIcon } from './Icons'
+import NavigateSheet from './NavigateSheet'
 
 const money = (t) =>
   t?.currency ? new Intl.NumberFormat(navigator.language || 'en-IN',
@@ -23,8 +24,16 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
   const [stays, setStays] = useState(null)
   const [seeThere, setSeeThere] = useState([])
   const [state, setState] = useState('idle')
+  // A suggestion the traveller wants directions to. Everything listed here is
+  // somewhere they might actually drive, so every row leads to the same
+  // handoff the rest of the app uses.
+  const [navTo, setNavTo] = useState(null)
 
   const last = stops.at(-1)
+
+  /** A search result as the navigation sheet expects a place. */
+  const asPlace = (r) => ({ id: r.id, name: r.name, region: r.detail ?? '', lat: r.lat, lng: r.lng })
+  const canNavigate = (r) => r.lat != null && r.lng != null
 
   useEffect(() => {
     if (stops.length === 0) return
@@ -107,21 +116,30 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
               <p className="text-xs font-semibold mb-1">{group.label}</p>
               <ul className="space-y-1">
                 {group.results.slice(0, 3).map((r) => (
-                  <li key={r.id} className="flex items-center gap-2 text-[12px]">
-                    {r.partner && <span className="text-[9px] font-bold text-brand shrink-0">PARTNER</span>}
-                    <span className="truncate">{r.name}</span>
-                    {r.rating != null && (
-                      <span className="flex items-center gap-0.5 text-sun shrink-0">
-                        <StarIcon size={9} filled />{r.rating.toFixed(1)}
-                      </span>
-                    )}
+                  <li key={r.id}>
+                    <button onClick={() => canNavigate(r) && setNavTo(asPlace(r))}
+                            disabled={!canNavigate(r)}
+                            className="w-full flex items-center gap-2 text-[12px] text-left py-0.5 rounded
+                                       hover:text-brand disabled:hover:text-inherit">
+                      {r.partner && <span className="text-[9px] font-bold text-brand shrink-0">PARTNER</span>}
+                      {r.tag && (
+                        <span className="rounded bg-raised border border-line text-mist text-[9px]
+                                         font-bold px-1 shrink-0">{r.tag}</span>
+                      )}
+                      <span className="truncate">{r.name}</span>
+                      {r.rating != null && (
+                        <span className="flex items-center gap-0.5 text-sun shrink-0">
+                          <StarIcon size={9} filled />{r.rating.toFixed(1)}
+                        </span>
+                      )}
+                    </button>
                   </li>
                 ))}
               </ul>
             </div>
           ))}
           <p className="text-[10px] text-mist mt-1 leading-snug">
-            Sampled at points along the route, not a full sweep of it.
+            Sampled at points along the route, not a full sweep of it. Tap any of these for directions.
           </p>
         </div>
       )}
@@ -135,14 +153,18 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
 
           {stays.partners.map((p) => (
             <div key={p.id} className="rounded-xl border border-brand/50 bg-brand/5 p-2.5 mb-1.5">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-brand text-ink text-[9px] font-bold uppercase
-                                 tracking-[0.1em] px-1.5 py-0.5 shrink-0">
-                  {p.verified ? 'Verified partner' : 'Partner'}
+              <button onClick={() => canNavigate(p) && setNavTo(asPlace(p))}
+                      disabled={!canNavigate(p)}
+                      className="w-full text-left">
+                <span className="flex items-center gap-2">
+                  <span className="rounded-full bg-brand text-ink text-[9px] font-bold uppercase
+                                   tracking-[0.1em] px-1.5 py-0.5 shrink-0">
+                    {p.verified ? 'Verified partner' : 'Partner'}
+                  </span>
+                  <span className="text-sm font-semibold truncate">{p.name}</span>
                 </span>
-                <span className="text-sm font-semibold truncate">{p.name}</span>
-              </div>
-              {p.detail && <p className="text-[11px] text-mist mt-0.5 truncate">{p.detail}</p>}
+                {p.detail && <span className="block text-[11px] text-mist mt-0.5 truncate">{p.detail}</span>}
+              </button>
               {p.phone && (
                 <a href={`tel:${p.phone.replace(/\s+/g, '')}`}
                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand mt-1">
@@ -154,7 +176,11 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
 
           {stays.others.map((o) => (
             <div key={o.id} className="flex items-center gap-2 py-1 text-[12px]">
-              <span className="truncate flex-1">{o.name}</span>
+              <button onClick={() => canNavigate(o) && setNavTo(asPlace(o))}
+                      disabled={!canNavigate(o)}
+                      className="truncate flex-1 text-left hover:text-brand disabled:hover:text-inherit">
+                {o.name}
+              </button>
               {o.rating != null && (
                 <span className="flex items-center gap-0.5 text-sun shrink-0">
                   <StarIcon size={9} filled />{o.rating.toFixed(1)}
@@ -185,7 +211,11 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
           <ul className="space-y-1">
             {seeThere.map((a) => (
               <li key={a.id} className="flex items-center gap-2 text-[12px]">
-                <span className="truncate flex-1">{a.name}</span>
+                <button onClick={() => canNavigate(a) && setNavTo(asPlace(a))}
+                        disabled={!canNavigate(a)}
+                        className="truncate flex-1 text-left hover:text-brand disabled:hover:text-inherit">
+                  {a.name}
+                </button>
                 {a.rating != null && (
                   <span className="flex items-center gap-0.5 text-sun shrink-0">
                     <StarIcon size={9} filled />{a.rating.toFixed(1)}
@@ -196,6 +226,8 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
           </ul>
         </div>
       )}
+
+      {navTo && <NavigateSheet place={navTo} onClose={() => setNavTo(null)} />}
 
       {state === 'ready' && !tolls && onTheWay.length === 0 && !stays?.others.length && seeThere.length === 0 && (
         <p className="text-sm text-mist leading-relaxed">

@@ -33,7 +33,19 @@ export const CATEGORIES = [
   { id: 'street_food',  label: 'Street food', blurb: 'Stalls and local vendors',  query: 'street food stall' },
   { id: 'bike_service', label: 'Bike',        blurb: 'Service, spares, accessories', query: 'motorcycle service spares and accessories' },
   { id: 'car_service',  label: 'Car',         blurb: 'Garages and accessories',      query: 'car repair garage and accessories' },
-  { id: 'fuel',         label: 'Fuel',        blurb: 'Petrol pumps and charging',  query: 'petrol pump or fuel station or ev charging' },
+  // Two searches, not one string with "or" in it. Text Search has no boolean
+  // operators — it matches the words as free text, so "petrol pump or fuel
+  // station or ev charging" scored on "charging" and came back as nothing but
+  // EV points. A rider on petrol was shown three chargers and no fuel.
+  //
+  // Petrol, diesel and CNG are usually the same forecourt in India, so one
+  // query covers all three; electric is a different kind of place and gets
+  // its own. Results are tagged by which search found them.
+  { id: 'fuel',         label: 'Fuel',        blurb: 'Petrol, diesel, CNG and charging',
+    queries: [
+      { q: 'petrol pump diesel CNG fuel station', tag: '' },
+      { q: 'electric vehicle charging station',   tag: 'EV' },
+    ] },
   { id: 'rental',       label: 'Rentals',     blurb: 'Bike, car and taxi hire',      query: 'bike and car rental service' },
   { id: 'attraction',   label: 'Attractions', blurb: 'Other things to see',       query: 'tourist attraction' },
 ]
@@ -69,7 +81,7 @@ async function partnerListings(category, { lat, lng }, radiusKm) {
   }))
 }
 
-async function googlePlaces(query, { lat, lng }, radiusKm) {
+async function googlePlaces(query, { lat, lng }, radiusKm, tag = '') {
   if (!KEY || !navigator.onLine) return []
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -85,6 +97,8 @@ async function googlePlaces(query, { lat, lng }, radiusKm) {
   return (data.places ?? []).map((p) => ({
     id: p.id,
     partner: false,
+    // Which search found it — 'EV' for a charger, blank for a forecourt.
+    tag,
     name: p.displayName?.text ?? 'Unnamed',
     detail: p.shortFormattedAddress ?? '',
     rating: p.rating ?? null,
@@ -105,13 +119,23 @@ export async function findNearby(categoryId, centre, { radiusKm = 8 } = {}) {
   const key = cacheKey(categoryId, centre.lat, centre.lng)
   if (cache.has(key)) return cache.get(key)
 
-  const [partners, google] = await Promise.all([
+  const searches = category.queries ?? [{ q: category.query, tag: '' }]
+  const [partners, ...groups] = await Promise.all([
     partnerListings(categoryId, centre, radiusKm),
-    googlePlaces(category.query, centre, radiusKm).catch((e) => {
-      console.info('Trekov: places search failed —', e.message)
-      return []
-    }),
+    ...searches.map(({ q, tag }) =>
+      googlePlaces(q, centre, radiusKm, tag).catch((e) => {
+        console.info('Trekov: places search failed —', e.message)
+        return []
+      })),
   ])
+
+  // Interleave rather than concatenate, so a fuel list is not three petrol
+  // pumps before the first charger — whichever the traveller needs is near
+  // the top either way.
+  const google = []
+  for (let i = 0; i < Math.max(...groups.map((g) => g.length), 0); i++) {
+    for (const g of groups) if (g[i]) google.push(g[i])
+  }
 
   const seen = new Set(partners.map((p) => p.name.toLowerCase()))
   const merged = [...partners, ...google.filter((g) => !seen.has(g.name.toLowerCase()))]

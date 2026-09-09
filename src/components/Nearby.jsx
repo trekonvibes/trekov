@@ -111,7 +111,15 @@ export default function Nearby({ centre, centreName, onNavigate }) {
                     {r.verified ? 'Verified partner' : 'Partner'}
                   </span>
                 )}
-                <p className="text-sm font-semibold leading-tight line-clamp-2">{r.name}</p>
+                <p className="text-sm font-semibold leading-tight line-clamp-2">
+                  {r.tag && (
+                    <span className="align-middle mr-1.5 rounded bg-raised border border-line text-mist
+                                     text-[9px] font-bold tracking-[0.08em] px-1 py-0.5">
+                      {r.tag}
+                    </span>
+                  )}
+                  {r.name}
+                </p>
                 {r.detail && <p className="text-[11px] text-mist line-clamp-2 mt-0.5">{r.detail}</p>}
 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px]">
