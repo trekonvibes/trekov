@@ -50,15 +50,27 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
 
         <div className="sheet-up relative tk-shell h-[86vh] flex flex-col rounded-t-3xl border-t border-line
                         bg-ink overflow-hidden">
-          {/* The photo leads.
-              A place sheet where the picture sits below the fold is a page
-              about a place; the picture is the reason anyone opened it, and
-              on this app it is also the thing people compete for. */}
-          <div className="relative shrink-0">
+          {/* Pinned to the sheet rather than to the photo, so it stays
+              reachable once the photo has scrolled away. */}
+          <button onClick={onClose}
+                  className="absolute top-3 right-3 z-20 rounded-full bg-black/55 backdrop-blur-sm p-1.5
+                             text-white/90 hover:text-white"
+                  aria-label="Close">
+            <CloseIcon size={20} />
+          </button>
+
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            {/* The photo leads.
+                A place sheet where the picture sits below the fold is a page
+                about a place; the picture is the reason anyone opened it, and
+                on this app it is also the thing people compete for. It scrolls
+                with everything else — held above the scroll area it had nothing
+                to give way to, and on a wide screen it filled the sheet. */}
+            <div className="relative">
             {post ? (
               <button onClick={() => setOpenPost(post.id)} className="block w-full text-left">
                 <Media media={post.media} alt={place.name}
-                       className="w-full aspect-[16/11] object-cover bg-raised" />
+                       className="w-full aspect-[16/11] max-h-[38vh] object-cover bg-raised" />
                 <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-brand text-ink
                                  text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1">
                   <StarIcon size={11} filled /> Featured
@@ -66,8 +78,8 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                 </span>
               </button>
             ) : (
-              <div className="w-full aspect-[16/11] bg-raised flex flex-col items-center justify-center
-                              text-center px-8">
+              <div className="w-full aspect-[16/11] max-h-[38vh] bg-raised flex flex-col items-center
+                              justify-center text-center px-8">
                 <p className="text-sm text-mist">No photo here yet.</p>
                 <p className="mt-1 text-xs text-mist">Take the first one and it holds the banner.</p>
               </div>
@@ -81,15 +93,8 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
               <p className="text-sm text-mist truncate">{place.region} · {place.country}</p>
             </div>
 
-            <button onClick={onClose}
-                    className="absolute top-3 right-3 rounded-full bg-black/55 backdrop-blur-sm p-1.5
-                               text-white/90 hover:text-white"
-                    aria-label="Close">
-              <CloseIcon size={20} />
-            </button>
-          </div>
+            </div>
 
-          <div className="flex-1 overflow-y-auto">
             <div className="px-5 pt-3 pb-4 border-b border-line">
               {place.blurb && <p className="text-sm text-white/85 leading-snug">{place.blurb}</p>}
 
