@@ -114,7 +114,8 @@ export default function Invite({ trip }) {
       <p className="text-[11px] text-mist mt-2 leading-relaxed">
         Opens your own app with the message ready — nothing is sent for you, and
         Trekov never reads your contacts. The link carries the whole itinerary,
-        so they can open it without an account.
+        so they can open it without an account: in Trekov if they have it, and
+        offering the install if they don't.
       </p>
     </section>
   )

@@ -15,7 +15,7 @@ const TILE_HOST = 'server.arcgisonline.com'
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(SHELL)
-      .then((c) => c.addAll(['/', '/app/', '/favicon.svg']))
+      .then((c) => c.addAll(['/', '/app/', '/i/', '/favicon.svg']))
       .catch(() => {})            // a missing shell file must not block install
       .then(() => self.skipWaiting()),
   )

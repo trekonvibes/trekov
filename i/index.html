@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="theme-color" content="#0B0F0E" />
+
+    <title>Join the trip — Trekov</title>
+    <meta name="description" content="Someone invited you on a trip planned in Trekov. Open it to see the route and follow along live." />
+
+    <!-- The preview card in the chat where this was pasted. -->
+    <meta property="og:title" content="Join the trip on Trekov" />
+    <meta property="og:description" content="See the route, the stops and everyone's position live." />
+    <meta property="og:image" content="https://trekov.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://trekov.com/og.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Styles are inline rather than imported: this page is opened on mobile
+         data, often in a chat app's browser, and it has one job. It should
+         paint before a stylesheet round-trip. -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; min-height: 100dvh;
+        display: flex; align-items: center; justify-content: center;
+        padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+        background: #0B0F0E; color: #F4F7F5;
+        font-family: Outfit, ui-sans-serif, system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card { width: 100%; max-width: 420px; }
+      .brand { display: flex; align-items: center; gap: 9px; margin-bottom: 28px; }
+      .brand svg { width: 26px; height: 26px; }
+      .brand span { font-weight: 700; font-size: 19px; letter-spacing: -0.01em; }
+      .kicker {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #7C8B84; margin: 0 0 8px;
+      }
+      h1 { font-size: 26px; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 10px; }
+      .sub { color: #9AA8A1; font-size: 14px; line-height: 1.55; margin: 0 0 22px; }
+      .stops {
+        list-style: none; margin: 0 0 24px; padding: 14px 16px;
+        border: 1px solid #1E2724; border-radius: 16px; background: #111716;
+      }
+      .stops li { font-size: 13.5px; padding: 4px 0; color: #C9D4CE; }
+      .stops li b { color: #F4F7F5; font-weight: 600; }
+      .btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; padding: 15px 18px; border-radius: 999px;
+        font-family: inherit; font-size: 15px; font-weight: 600;
+        text-decoration: none; cursor: pointer; border: 1px solid transparent;
+        margin-bottom: 10px; transition: opacity .15s, border-color .15s, color .15s;
+      }
+      .btn:active { opacity: .82; }
+      .primary { background: #34D399; color: #06120D; }
+      .ghost { background: transparent; border-color: #1E2724; color: #C9D4CE; }
+      .ghost:hover { border-color: #34D399; color: #34D399; }
+      .note {
+        font-size: 12px; line-height: 1.6; color: #7C8B84;
+        margin: 18px 0 0; padding-top: 18px; border-top: 1px solid #1E2724;
+      }
+      .note b { color: #C9D4CE; font-weight: 600; }
+      .warn {
+        display: none; gap: 10px; align-items: flex-start;
+        font-size: 13px; line-height: 1.5; color: #FCD9A8;
+        background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.28);
+        border-radius: 14px; padding: 12px 14px; margin-bottom: 18px;
+      }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M16 2 3 27h26L16 2Z" fill="#34D399"/>
+          <circle cx="16" cy="20" r="3.4" fill="#0B0F0E"/>
+        </svg>
+        <span>Trekov</span>
+      </div>
+
+      <p class="kicker" id="kicker">You've been invited</p>
+      <h1 id="title">Join the trip</h1>
+      <p class="sub" id="sub">Open it to see the route, the stops and where everyone is.</p>
+
+      <ul class="stops" id="stops" hidden></ul>
+
+      <div class="warn" id="warn">
+        <span aria-hidden="true">↗</span>
+        <span id="warn-text"></span>
+      </div>
+
+      <a class="btn primary" id="open" href="/app/">Open in Trekov</a>
+      <button class="btn ghost" id="install" hidden>Install Trekov</button>
+      <a class="btn ghost" id="store" hidden>Get the app</a>
+      <a class="btn ghost" id="browser" href="/app/" hidden>Continue in browser</a>
+
+      <p class="note" id="note">
+        No account needed — the invite carries the whole itinerary with it.
+      </p>
+    </main>
+
+    <script type="module" src="/src/invite.js"></script>
+  </body>
+</html>

@@ -19,7 +19,11 @@ export function encodeTrip(trip, places) {
     stops: trip.stops.map((s) => ({ placeId: s.placeId, note: s.note })),
     places: used,
   }
-  return `${location.origin}${location.pathname}#trip=${toB64Url(JSON.stringify(payload))}`
+  // Invites point at /i/ rather than straight at the app. The recipient is
+  // usually on a phone, in a chat app's browser, and may not have Trekov at
+  // all — /i/ works that out and forwards. Links already sent that point at
+  // /app/#trip= keep working; the app reads the same hash either way.
+  return `${location.origin}/i/#trip=${toB64Url(JSON.stringify(payload))}`
 }
 
 /** Read a trip out of the current URL, or null if there isn't one. */
