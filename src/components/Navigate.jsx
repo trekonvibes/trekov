@@ -406,12 +406,16 @@ export default function Navigate({ place, trip, me, onClose }) {
             )}
           </header>
 
-          {/* Voice sits under the header rather than in it: on a group trip
-              this is the control people reach for with gloves on, and the
-              header is already carrying the destination and GPS state.
-              Solo trips have nobody to talk to; trips saved before `kind`
-              existed are treated as group rather than hidden. */}
-          {trip && trip.kind !== 'solo' && (
+          {/* Voice sits under the header rather than in it: this is the
+              control people reach for with gloves on, and the header is
+              already carrying the destination and GPS state.
+
+              Every trip gets it, solo included — the same rule the live
+              positions above follow. "Solo" describes how the trip was
+              planned, not who ends up riding it: a solo trip that gets
+              shared has someone on the other end of the link, and anyone
+              opening it lands in the same room. */}
+          {trip && (
             <div className="flex items-center justify-end gap-2 px-3 py-1.5 border-b border-line shrink-0">
               <Voice tripId={trip.id} me={me} />
             </div>
