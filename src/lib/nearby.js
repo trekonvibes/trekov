@@ -9,6 +9,7 @@
 // result. Nothing here is ever invented — an empty category shows as empty.
 
 import { supabase } from './supabase'
+import { distance } from './geo'
 
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchText'
@@ -81,7 +82,29 @@ async function partnerListings(category, { lat, lng }, radiusKm) {
   }))
 }
 
-async function googlePlaces(query, { lat, lng }, radiusKm, tag = '') {
+/**
+ * A box that contains the search circle.
+ *
+ * Text Search only accepts a rectangle as a hard restriction — circles are
+ * available as a bias, which Google is free to ignore, and did: a search
+ * around the Rann of Kutch came back with hotels in Ahmedabad and Jaipur
+ * under a heading promising 8 km. The box is the cap; the real circle is
+ * enforced on the results afterwards.
+ */
+function boxAround({ lat, lng }, radiusKm) {
+  const dLat = radiusKm / 111
+  // Longitude degrees shrink with latitude; near the poles the divisor would
+  // collapse, so it is floored well before that matters.
+  const dLng = radiusKm / Math.max(111 * Math.cos((lat * Math.PI) / 180), 1)
+  return {
+    rectangle: {
+      low:  { latitude: lat - dLat, longitude: lng - dLng },
+      high: { latitude: lat + dLat, longitude: lng + dLng },
+    },
+  }
+}
+
+async function googlePlaces(query, centre, radiusKm, tag = '') {
   if (!KEY || !navigator.onLine) return []
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -89,7 +112,7 @@ async function googlePlaces(query, { lat, lng }, radiusKm, tag = '') {
     body: JSON.stringify({
       textQuery: query,
       maxResultCount: 8,
-      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: radiusKm * 1000 } },
+      locationRestriction: boxAround(centre, radiusKm),
     }),
   })
   if (!res.ok) throw new Error(`Places ${res.status}`)
@@ -137,8 +160,22 @@ export async function findNearby(categoryId, centre, { radiusKm = 8 } = {}) {
     for (const g of groups) if (g[i]) google.push(g[i])
   }
 
+  // The rectangle's corners reach about 1.4x the radius, and the partner
+  // query is a box too, so both sources are trimmed to the real circle. The
+  // heading says "within 8 km" and now that is arithmetic, not a hope.
+  const within = (r) =>
+    r.lat == null || r.lng == null ||
+    distance(centre, { lat: r.lat, lng: r.lng }) <= radiusKm * 1000
+
   const seen = new Set(partners.map((p) => p.name.toLowerCase()))
   const merged = [...partners, ...google.filter((g) => !seen.has(g.name.toLowerCase()))]
+    .filter(within)
+    // Carry how far, so the claim in the heading is on every card rather than
+    // taken on trust.
+    .map((r) => ({
+      ...r,
+      km: r.lat == null ? null : distance(centre, { lat: r.lat, lng: r.lng }) / 1000,
+    }))
   cache.set(key, merged)
   return merged
 }

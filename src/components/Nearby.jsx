@@ -123,6 +123,11 @@ export default function Nearby({ centre, centreName, onNavigate }) {
                 {r.detail && <p className="text-[11px] text-mist line-clamp-2 mt-0.5">{r.detail}</p>}
 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px]">
+                  {r.km != null && (
+                    <span className="text-mist tabular-nums">
+                      {r.km < 1 ? `${Math.round(r.km * 1000)} m` : `${r.km.toFixed(1)} km`}
+                    </span>
+                  )}
                   {r.rating != null && (
                     <span className="flex items-center gap-1 text-sun">
                       <StarIcon size={11} filled /> {r.rating.toFixed(1)}
