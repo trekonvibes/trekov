@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CATEGORIES, findNearby } from '../lib/nearby'
 import { adoptHit } from '../lib/adopt'
+import { bookingUrl, BOOKING_DISCLOSURE, hasBooking } from '../lib/affiliate'
 import {
   BackIcon, BedIcon, BowlIcon, CarIcon, CutleryIcon, FuelIcon, KeyIcon, MotorcycleIcon, MountainIcon,
   PhoneIcon, StarIcon,
@@ -175,10 +176,33 @@ export default function Nearby({ centre, centreName, onNavigate }) {
           </ul>
 
           {state === 'ready' && !results.some((r) => r.partner) && (
-            <p className="text-[11px] text-mist mt-3 leading-relaxed">
-              These come from Google. Businesses listed with Trekov appear above them —
-              <a href="mailto:punit13690@gmail.com?subject=Listing%20on%20Trekov" className="text-brand"> get listed</a>.
-            </p>
+            <>
+              {/* Stays only, and only with no partner in the list: the paid
+                  link fills a gap, it does not outrank a paying member. */}
+              {category === 'hotel' && hasBooking() && (
+                <>
+                  {/* centreName is the word "you" when this is the traveller's
+                      own position, which is not a place anyone can search for.
+                      Coordinates carry the meaning in that case. */}
+                  <a href={bookingUrl({
+                       name: centreName && centreName !== 'you' ? centreName : '',
+                       lat: centre.lat, lng: centre.lng,
+                     })}
+                     target="_blank" rel="noreferrer sponsored"
+                     className="mt-3 w-full flex items-center justify-center gap-2 rounded-full
+                                border border-line py-2.5 text-xs font-semibold
+                                hover:border-brand hover:text-brand">
+                    <BedIcon size={14} /> Book a room here
+                  </a>
+                  <p className="text-[10px] text-mist mt-1 text-center">{BOOKING_DISCLOSURE}</p>
+                </>
+              )}
+
+              <p className="text-[11px] text-mist mt-3 leading-relaxed">
+                These come from Google. Businesses listed with Trekov appear above them —
+                <a href="mailto:punit13690@gmail.com?subject=Listing%20on%20Trekov" className="text-brand"> get listed</a>.
+              </p>
+            </>
           )}
         </>
       )}

@@ -3,6 +3,7 @@ import { alongRoute, attractionsNear, staysNear, tripTolls } from '../lib/sugges
 import { getTripRoute } from '../lib/route'
 import { BedIcon, CarIcon, MotorcycleIcon, MountainIcon, PhoneIcon, StarIcon } from './Icons'
 import NavigateSheet from './NavigateSheet'
+import { bookingUrl, BOOKING_DISCLOSURE, hasBooking } from '../lib/affiliate'
 
 const money = (t) =>
   t?.currency ? new Intl.NumberFormat(navigator.language || 'en-IN',
@@ -195,9 +196,30 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
           ))}
 
           {stays.partners.length === 0 && (
-            <p className="text-[10px] text-mist mt-1.5 leading-snug">
-              No Trekov partners here yet. These come from Google.
-            </p>
+            <>
+              <p className="text-[10px] text-mist mt-1.5 leading-snug">
+                No Trekov partners here yet. These come from Google.
+              </p>
+
+              {/* Only where there is no partner to sit above. A stay that pays
+                  for placement is not going to be pushed under a paid link. */}
+              {hasBooking() && (
+                <>
+                  <a href={bookingUrl({
+                       name: last.name, region: last.region,
+                       lat: last.lat, lng: last.lng,
+                       checkIn: trip.start, checkOut: trip.end,
+                     })}
+                     target="_blank" rel="noreferrer sponsored"
+                     className="mt-2 w-full flex items-center justify-center gap-2 rounded-full
+                                border border-line py-2.5 text-xs font-semibold
+                                hover:border-brand hover:text-brand">
+                    <BedIcon size={14} /> Book a room near {last.name}
+                  </a>
+                  <p className="text-[10px] text-mist mt-1 text-center">{BOOKING_DISCLOSURE}</p>
+                </>
+              )}
+            </>
           )}
         </div>
       )}
