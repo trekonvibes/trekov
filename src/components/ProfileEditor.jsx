@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '../lib/store'
 import { HANDLE_HINT, normaliseHandle, saveProfile, squareDataUrl, validHandle } from '../lib/profile'
 import { CloseIcon } from './Icons'
@@ -10,9 +10,12 @@ const MAX_BIO = 140
 /**
  * Editing your name, handle, bio and picture.
  *
- * The picture is taken here and now, like every other photo in Trekov. There
- * is no gallery picker anywhere in the app and this is not the place to add
- * the first one.
+ * This is the one screen in Trekov with a file picker. Place photos are
+ * camera-only on purpose — a photo on a location banner is a claim that you
+ * were standing there, and a gallery upload cannot make that claim. An avatar
+ * claims nothing of the sort, so a picture you already have is perfectly
+ * good. The exception stops here: nothing in the posting flow gains a picker
+ * from this.
  */
 export default function ProfileEditor({ onClose }) {
   const profile = useStore((s) => s.profile)
@@ -23,6 +26,7 @@ export default function ProfileEditor({ onClose }) {
   const [bio, setBio] = useState(profile.bio)
   const [avatar, setAvatar] = useState(profile.avatar)
   const [shooting, setShooting] = useState(false)
+  const picker = useRef(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -31,11 +35,22 @@ export default function ProfileEditor({ onClose }) {
 
   async function capture(file) {
     setShooting(false)
+    if (!file) return
+    setError('')
     try {
       setAvatar(await squareDataUrl(file))
-    } catch (e) {
-      setError(e.message)
+    } catch {
+      // Phones hand over formats the canvas cannot always decode, HEIC being
+      // the usual one, and the browser gives no warning until it fails.
+      setError('That image could not be read. Try another, or take a photo.')
     }
+  }
+
+  function choose(e) {
+    const file = e.target.files?.[0]
+    // Clear it, or picking the same file twice fires no change event.
+    e.target.value = ''
+    capture(file)
   }
 
   async function save() {
@@ -81,14 +96,22 @@ export default function ProfileEditor({ onClose }) {
           <div className="overflow-y-auto px-5 py-5 space-y-5">
             <div className="flex items-center gap-4">
               <img src={avatar} alt="" className="size-20 rounded-full object-cover ring-2 ring-brand/40 shrink-0" />
-              <div>
-                <button onClick={() => setShooting(true)}
-                        className="rounded-full border border-line px-4 py-2 text-sm font-semibold
-                                   hover:border-brand hover:text-brand">
-                  Take a new photo
-                </button>
+              <div className="min-w-0">
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setShooting(true)}
+                          className="rounded-full border border-line px-4 py-2 text-sm font-semibold
+                                     hover:border-brand hover:text-brand">
+                    Take a photo
+                  </button>
+                  <button onClick={() => picker.current?.click()}
+                          className="rounded-full border border-line px-4 py-2 text-sm font-semibold
+                                     hover:border-brand hover:text-brand">
+                    Choose from gallery
+                  </button>
+                </div>
+                <input ref={picker} type="file" accept="image/*" onChange={choose} className="hidden" />
                 <p className="text-[11px] text-mist mt-1.5 leading-snug">
-                  Camera only, like every photo here.
+                  Cropped to a square. Place photos stay camera-only.
                 </p>
               </div>
             </div>
