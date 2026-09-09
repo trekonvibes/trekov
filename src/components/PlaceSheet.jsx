@@ -48,125 +48,143 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
       <div className="fixed inset-0 z-[1000] flex items-end justify-center" role="dialog" aria-label={place.name}>
         <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
 
-        <div className="sheet-up relative w-full max-w-[520px] h-[80vh] flex flex-col rounded-t-3xl border-t border-line bg-ink">
-          <div className="shrink-0 px-5 pt-4 pb-3 border-b border-line">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-semibold leading-tight truncate">{place.name}</h2>
-                <p className="text-sm text-mist truncate">{place.region} · {place.country}</p>
+        <div className="sheet-up relative tk-shell h-[86vh] flex flex-col rounded-t-3xl border-t border-line
+                        bg-ink overflow-hidden">
+          {/* The photo leads.
+              A place sheet where the picture sits below the fold is a page
+              about a place; the picture is the reason anyone opened it, and
+              on this app it is also the thing people compete for. */}
+          <div className="relative shrink-0">
+            {post ? (
+              <button onClick={() => setOpenPost(post.id)} className="block w-full text-left">
+                <Media media={post.media} alt={place.name}
+                       className="w-full aspect-[16/11] object-cover bg-raised" />
+                <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-brand text-ink
+                                 text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1">
+                  <StarIcon size={11} filled /> Featured
+                  {post.authorId === meId && <span className="font-extrabold">· yours</span>}
+                </span>
+              </button>
+            ) : (
+              <div className="w-full aspect-[16/11] bg-raised flex flex-col items-center justify-center
+                              text-center px-8">
+                <p className="text-sm text-mist">No photo here yet.</p>
+                <p className="mt-1 text-xs text-mist">Take the first one and it holds the banner.</p>
               </div>
-              <button onClick={onClose} className="text-mist hover:text-white p-1 shrink-0" aria-label="Close">
-                <CloseIcon size={22} />
-              </button>
-            </div>
-
-            {place.blurb && <p className="mt-2.5 text-sm text-white/85 leading-snug">{place.blurb}</p>}
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              {place.bestTime && (
-                <span className="inline-flex items-center gap-1.5 text-sun/90 bg-sun/10 rounded-full px-2.5 py-1">
-                  <CalendarIcon size={13} /> Best {place.bestTime}
-                </span>
-              )}
-              <span className="text-mist">
-                {place.postCount} photo{place.postCount === 1 ? '' : 's'}
-              </span>
-              <a href={mapsUrl(place)} target="_blank" rel="noreferrer" className="text-mist ml-auto">
-                Open in Google Maps
-              </a>
-            </div>
-
-            {/* Navigating is the point of opening a place, so it gets the
-                primary button rather than a link buried in the meta row. */}
-            <button onClick={() => onNavigate?.(place.id)}
-                    className="mt-3 w-full flex items-center justify-center gap-2 rounded-full bg-brand text-ink
-                               py-3 text-sm font-semibold active:scale-[.99] transition">
-              <NavIcon size={18} filled /> Navigate here
-            </button>
-
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={() => flash(toggleSavePlace(place.id) ? 'Saved to To Visit' : 'Removed from To Visit')}
-                aria-pressed={place.saved}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold border transition
-                            ${place.saved ? 'bg-brand/15 text-brand border-brand' : 'border-line hover:border-brand hover:text-brand'}`}>
-                <SaveIcon size={18} filled={place.saved} />
-                {place.saved ? 'Saved' : 'Save place'}
-              </button>
-              <button onClick={() => setTripMenu((v) => !v)}
-                      className="flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold
-                                 border border-line hover:border-brand hover:text-brand transition">
-                <PlusIcon size={18} /> Add to trip
-              </button>
-            </div>
-
-            <button onClick={() => setRating(true)}
-                    className="mt-2 w-full rounded-2xl border border-line hover:border-brand/60 transition p-3 text-left">
-              {ratings ? (
-                <>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-semibold tabular-nums">{ratings.overall.toFixed(1)}</span>
-                    <span className="text-xs text-mist">/ 5 · {ratings.count} review{ratings.count === 1 ? '' : 's'}</span>
-                    <span className="ml-auto text-xs text-brand font-semibold">Rate it</span>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {RATING_CATEGORIES.filter((c) => ratings.byCategory[c.id] != null).map((c) => (
-                      <div key={c.id} className="flex items-center gap-2">
-                        <span className="text-[11px] text-mist w-24 shrink-0">{c.label}</span>
-                        <span className="h-1.5 flex-1 rounded-full bg-raised overflow-hidden">
-                          <span className="block h-full bg-brand"
-                                style={{ width: `${(ratings.byCategory[c.id] / 5) * 100}%` }} />
-                        </span>
-                        <span className="text-[11px] text-mist tabular-nums w-7 text-right">
-                          {ratings.byCategory[c.id].toFixed(1)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <span className="flex items-center justify-between">
-                  <span className="text-sm text-mist">No ratings yet</span>
-                  <span className="text-xs text-brand font-semibold">Be the first to rate</span>
-                </span>
-              )}
-            </button>
-
-            {tripMenu && (
-              <ul className="mt-2 rounded-2xl border border-line bg-surface divide-y divide-line overflow-hidden">
-                {trips.map((t) => (
-                  <li key={t.id}>
-                    <button onClick={() => addTo(t.id)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-raised">
-                      {t.title} <span className="text-mist">· {t.stops.length} stops</span>
-                    </button>
-                  </li>
-                ))}
-                <li>
-                  <button onClick={addToNewTrip} className="w-full text-left px-4 py-2.5 text-sm text-brand font-medium hover:bg-raised">
-                    + Start a new trip
-                  </button>
-                </li>
-              </ul>
             )}
 
+            {/* The name sits on the image, so the picture keeps the full width
+                instead of a title bar taking a slice off the top. */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 pt-16 px-5 pb-3
+                            bg-gradient-to-t from-ink via-ink/85 to-transparent">
+              <h2 className="text-xl font-semibold leading-tight truncate">{place.name}</h2>
+              <p className="text-sm text-mist truncate">{place.region} · {place.country}</p>
+            </div>
+
+            <button onClick={onClose}
+                    className="absolute top-3 right-3 rounded-full bg-black/55 backdrop-blur-sm p-1.5
+                               text-white/90 hover:text-white"
+                    aria-label="Close">
+              <CloseIcon size={20} />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {!post ? (
-              <div className="text-center text-sm text-mist py-16 px-8">
-                <p>No photo here yet.</p>
-                <p className="mt-1 text-xs">Take the first one and it holds the banner.</p>
-              </div>
-            ) : (
-              <>
-                {/* The banner: whoever shot most recently holds it. */}
-                <button onClick={() => setOpenPost(post.id)} className="w-full text-left relative">
-                  <Media media={post.media} alt={place.name} className="w-full aspect-[4/5] object-cover bg-raised" />
-                  <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-brand text-ink
-                                   text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1">
-                    <StarIcon size={11} filled /> Featured
-                    {post.authorId === meId && <span className="font-extrabold">· yours</span>}
+            <div className="px-5 pt-3 pb-4 border-b border-line">
+              {place.blurb && <p className="text-sm text-white/85 leading-snug">{place.blurb}</p>}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                {place.bestTime && (
+                  <span className="inline-flex items-center gap-1.5 text-sun/90 bg-sun/10 rounded-full px-2.5 py-1">
+                    <CalendarIcon size={13} /> Best {place.bestTime}
                   </span>
+                )}
+                <span className="text-mist">
+                  {place.postCount} photo{place.postCount === 1 ? '' : 's'}
+                </span>
+                <a href={mapsUrl(place)} target="_blank" rel="noreferrer" className="text-mist ml-auto">
+                  Open in Google Maps
+                </a>
+              </div>
+
+              {/* Navigating is the point of opening a place, so it gets the
+                  primary button rather than a link buried in the meta row. */}
+              <button onClick={() => onNavigate?.(place.id)}
+                      className="mt-3 w-full flex items-center justify-center gap-2 rounded-full bg-brand text-ink
+                                 py-3 text-sm font-semibold active:scale-[.99] transition">
+                <NavIcon size={18} filled /> Navigate here
+              </button>
+
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => flash(toggleSavePlace(place.id) ? 'Saved to To Visit' : 'Removed from To Visit')}
+                  aria-pressed={place.saved}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold border transition
+                              ${place.saved ? 'bg-brand/15 text-brand border-brand' : 'border-line hover:border-brand hover:text-brand'}`}>
+                  <SaveIcon size={18} filled={place.saved} />
+                  {place.saved ? 'Saved' : 'Save place'}
+                </button>
+                <button onClick={() => setTripMenu((v) => !v)}
+                        className="flex-1 flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold
+                                   border border-line hover:border-brand hover:text-brand transition">
+                  <PlusIcon size={18} /> Add to trip
+                </button>
+              </div>
+
+              {tripMenu && (
+                <ul className="mt-2 rounded-2xl border border-line bg-surface divide-y divide-line overflow-hidden">
+                  {trips.map((t) => (
+                    <li key={t.id}>
+                      <button onClick={() => addTo(t.id)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-raised">
+                        {t.title} <span className="text-mist">· {t.stops.length} stops</span>
+                      </button>
+                    </li>
+                  ))}
+                  <li>
+                    <button onClick={addToNewTrip} className="w-full text-left px-4 py-2.5 text-sm text-brand font-medium hover:bg-raised">
+                      + Start a new trip
+                    </button>
+                  </li>
+                </ul>
+              )}
+
+              <button onClick={() => setRating(true)}
+                      className="mt-2 w-full rounded-2xl border border-line hover:border-brand/60 transition p-3 text-left">
+                {ratings ? (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-semibold tabular-nums">{ratings.overall.toFixed(1)}</span>
+                      <span className="text-xs text-mist">/ 5 · {ratings.count} review{ratings.count === 1 ? '' : 's'}</span>
+                      <span className="ml-auto text-xs text-brand font-semibold">Rate it</span>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {RATING_CATEGORIES.filter((c) => ratings.byCategory[c.id] != null).map((c) => (
+                        <div key={c.id} className="flex items-center gap-2">
+                          <span className="text-[11px] text-mist w-24 shrink-0">{c.label}</span>
+                          <span className="h-1.5 flex-1 rounded-full bg-raised overflow-hidden">
+                            <span className="block h-full bg-brand"
+                                  style={{ width: `${(ratings.byCategory[c.id] / 5) * 100}%` }} />
+                          </span>
+                          <span className="text-[11px] text-mist tabular-nums w-7 text-right">
+                            {ratings.byCategory[c.id].toFixed(1)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <span className="flex items-center justify-between">
+                    <span className="text-sm text-mist">No ratings yet</span>
+                    <span className="text-xs text-brand font-semibold">Be the first to rate</span>
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {post && (
+              <>
+                {/* Whose photo is on the banner, and when they took it. */}
+                <button onClick={() => setOpenPost(post.id)} className="w-full text-left">
                   <div className="flex items-center gap-3 px-4 py-3">
                     <img src={getUser(post.authorId).avatar} alt="" className="size-9 rounded-full object-cover shrink-0" />
                     <div className="min-w-0 flex-1">

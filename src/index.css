@@ -24,6 +24,17 @@ body {
 }
 
 /* Hide scrollbars on horizontal rails without losing scrollability */
+/* The app column.
+ *
+ * A phone-width shell by default, because that is the shape the app is
+ * designed around. It widens on anything genuinely bigger — a tablet, or a
+ * foldable opened out — rather than sitting in a narrow strip between black
+ * bars. One ceiling rather than a ladder of them: any width between a
+ * tablet and a large monitor fills completely, and only a desktop wide
+ * enough that full-bleed text would be unreadable gets centred. */
+.tk-shell { width: 100%; max-width: 520px; }
+@media (min-width: 768px) { .tk-shell { max-width: 1140px; } }
+
 .no-bar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-bar::-webkit-scrollbar { display: none; }
 

@@ -409,7 +409,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   return (
     <Portal>
       <div className="fixed inset-0 z-[1400] bg-black flex justify-center" role="dialog" aria-label={`Navigate to ${place.name}`}>
-        <div className="w-full max-w-[520px] h-full bg-ink flex flex-col sm:border-x sm:border-line">
+        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line">
           <header className="flex items-center gap-2 px-3 h-14 border-b border-line shrink-0">
             <button onClick={onClose} className="text-mist hover:text-white p-1" aria-label="Stop navigating">
               <BackIcon size={22} />

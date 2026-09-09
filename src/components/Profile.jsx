@@ -65,7 +65,7 @@ export default function Profile({ onPost }) {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-0.5 px-0.5">
+        <div className="grid grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-0.5 px-0.5">
           {mine.map((p) => (
             <div key={p.id} className="relative aspect-square">
               <Media media={p.media} alt="" className="size-full object-cover" />

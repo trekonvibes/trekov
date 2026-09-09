@@ -3,7 +3,7 @@ import { CATEGORIES, findNearby } from '../lib/nearby'
 import { adoptHit } from '../lib/adopt'
 import {
   BackIcon, BedIcon, BowlIcon, CarIcon, CutleryIcon, KeyIcon, MotorcycleIcon, MountainIcon,
-  StarIcon,
+  PhoneIcon, StarIcon,
 } from './Icons'
 
 /** Category id to icon. Kept here rather than in the data, which stays plain. */
@@ -56,7 +56,7 @@ export default function Nearby({ centre, centreName, onNavigate }) {
           <h2 className="text-xs uppercase tracking-[0.14em] text-mist mb-1">Around you</h2>
           <p className="text-[11px] text-mist mb-3">Within {RADIUS_KM} km of {centreName || 'here'}</p>
 
-          <ul className="grid grid-cols-2 gap-2">
+          <ul className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {CATEGORIES.map((c) => {
               const CategoryIcon = ICONS[c.id] ?? MountainIcon
               return (
@@ -100,7 +100,7 @@ export default function Nearby({ centre, centreName, onNavigate }) {
             </p>
           )}
 
-          <ul className="grid grid-cols-2 gap-2">
+          <ul className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {results.map((r) => (
               <li key={r.id}
                   className={`flex flex-col rounded-2xl border p-3 ${r.partner ? 'border-brand/50 bg-brand/5' : 'border-line bg-surface'}`}>
@@ -134,7 +134,14 @@ export default function Nearby({ centre, centreName, onNavigate }) {
                     navigation runs on a place record. "Map" stays as a
                     secondary escape hatch. */}
                 <div className="flex items-center gap-3 mt-auto pt-2 text-[11px] font-semibold">
-                  {r.phone && <a href={`tel:${r.phone}`} className="text-mist hover:text-white">Call</a>}
+                  {/* A number you can tap is the point of finding a garage on a
+                      road you do not know, so it leads rather than trails. */}
+                  {r.phone && (
+                    <a href={`tel:${r.phone.replace(/\s+/g, '')}`}
+                       className="flex items-center gap-1 text-brand" title={r.phone}>
+                      <PhoneIcon size={11} /> Call
+                    </a>
+                  )}
                   {onNavigate && r.lat != null && r.lng != null && (
                     <button onClick={() => onNavigate(adoptHit(r))} className="text-brand">
                       Navigate

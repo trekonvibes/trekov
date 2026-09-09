@@ -12,10 +12,14 @@ import { supabase } from './supabase'
 
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchText'
+// Field mask, which is also the bill: Places charges by the most expensive
+// field asked for. nationalPhoneNumber sits in the Enterprise tier, so this
+// request costs more than one without it — worth it, because a number you can
+// tap is the whole point of finding a garage on a road you do not know.
 const FIELDS = [
   'places.id', 'places.displayName', 'places.rating', 'places.userRatingCount',
   'places.location', 'places.shortFormattedAddress', 'places.priceLevel',
-  'places.currentOpeningHours.openNow',
+  'places.currentOpeningHours.openNow', 'places.nationalPhoneNumber',
 ].join(',')
 
 /**
@@ -85,6 +89,9 @@ async function googlePlaces(query, { lat, lng }, radiusKm) {
     rating: p.rating ?? null,
     reviews: p.userRatingCount ?? 0,
     openNow: p.currentOpeningHours?.openNow ?? null,
+    // Local format: it is dialled from the same country nearly every time,
+    // and it is what a person would read out.
+    phone: p.nationalPhoneNumber ?? '',
     lat: p.location?.latitude,
     lng: p.location?.longitude,
   }))

@@ -68,7 +68,7 @@ export default function Camera({ onCapture, onCancel }) {
 
   return (
     <div className="fixed inset-0 z-[1500] bg-black flex justify-center" role="dialog" aria-label="Take a photo">
-      <div className="w-full max-w-[520px] h-full flex flex-col bg-black">
+      <div className="tk-shell h-full flex flex-col bg-black">
         <header className="flex items-center justify-between px-4 h-14 shrink-0">
           <button onClick={onCancel} className="text-white/80 hover:text-white" aria-label="Cancel">
             <CloseIcon size={22} />

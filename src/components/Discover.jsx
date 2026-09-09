@@ -166,7 +166,7 @@ export default function Discover({ onOpenPlace, onNavigate }) {
         {notifications.length > 0 && (
           <section>
             <h2 className="text-xs uppercase tracking-[0.14em] text-mist mb-3">Alerts</h2>
-            <ul className="grid grid-cols-2 gap-2">
+            <ul className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
               {notifications.map((n) => {
                 const place = getPlace(n.placeId)
                 return (

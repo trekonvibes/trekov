@@ -76,7 +76,7 @@ export default function Composer({ onClose, onPosted, onNewPlace }) {
   return (
     <Portal>
       <div className="fixed inset-0 z-[1200] bg-black flex justify-center">
-        <div className="w-full max-w-[520px] h-full bg-ink flex flex-col sm:border-x sm:border-line">
+        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line">
         <header className="flex items-center justify-between px-4 h-14 border-b border-line shrink-0">
           <button onClick={onClose} className="text-mist hover:text-white" aria-label="Cancel"><CloseIcon size={22} /></button>
           <span className="flex items-center gap-2 font-semibold"><Logo size={18} /> New photo</span>

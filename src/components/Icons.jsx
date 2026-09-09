@@ -131,3 +131,6 @@ export const StarIcon = (p) => (
 export const ExternalIcon = (p) => (
   <Icon {...p}><path d="M14 4h6v6M20 4l-8.5 8.5M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></Icon>
 )
+export const PhoneIcon = (p) => (
+  <Icon {...p}><path d="M7.5 3.5 9.8 8l-2 1.9a12 12 0 0 0 6.3 6.3l1.9-2 4.5 2.3v3a1.5 1.5 0 0 1-1.7 1.5C11.6 20.2 3.8 12.4 3.2 5.2A1.5 1.5 0 0 1 4.7 3.5Z" /></Icon>
+)

@@ -134,7 +134,7 @@ export default function App() {
 
   return (
     <div className="h-full flex justify-center bg-black">
-      <div className="relative w-full max-w-[520px] h-full flex flex-col bg-ink sm:border-x sm:border-line">
+      <div className="relative tk-shell h-full flex flex-col bg-ink sm:border-x sm:border-line">
         {/* The map manages its own height; the other screens scroll. */}
         <main className={`flex-1 min-h-0 ${tab === 'map' ? '' : 'overflow-y-auto'}`}>
           {screens[tab]}
