@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../lib/store'
-import { HANDLE_HINT, normaliseHandle, saveProfile, squareDataUrl, validHandle } from '../lib/profile'
+import {
+  defaultAvatar, HANDLE_HINT, normaliseHandle, saveProfile, squareDataUrl, validHandle,
+} from '../lib/profile'
 import { CloseIcon } from './Icons'
 import Camera from './Camera'
 import Portal from './Portal'
@@ -24,6 +26,8 @@ export default function ProfileEditor({ onClose }) {
   const [name, setName] = useState(profile.name)
   const [handle, setHandle] = useState(profile.handle)
   const [bio, setBio] = useState(profile.bio)
+  // '' means no photo. The placeholder is derived from the handle rather than
+  // stored, so it keeps up while the handle is still being typed.
   const [avatar, setAvatar] = useState(profile.avatar)
   const [shooting, setShooting] = useState(false)
   const picker = useRef(null)
@@ -56,7 +60,9 @@ export default function ProfileEditor({ onClose }) {
   async function save() {
     setSaving(true)
     setError('')
-    const res = await saveProfile({ name: name.trim(), handle, bio: bio.trim(), avatar })
+    const res = await saveProfile({
+      name: name.trim(), handle, bio: bio.trim(), avatar: avatar || defaultAvatar(handle),
+    })
     setSaving(false)
 
     // The local save always lands. Only the account mirror can fail, and the
@@ -95,7 +101,8 @@ export default function ProfileEditor({ onClose }) {
 
           <div className="overflow-y-auto px-5 py-5 space-y-5">
             <div className="flex items-center gap-4">
-              <img src={avatar} alt="" className="size-20 rounded-full object-cover ring-2 ring-brand/40 shrink-0" />
+              <img src={avatar || defaultAvatar(handle)} alt=""
+                   className="size-20 rounded-full object-cover ring-2 ring-brand/40 shrink-0" />
               <div className="min-w-0">
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => setShooting(true)}
@@ -108,10 +115,19 @@ export default function ProfileEditor({ onClose }) {
                                      hover:border-brand hover:text-brand">
                     Choose from gallery
                   </button>
+                  {avatar && (
+                    <button onClick={() => { setAvatar(''); setError('') }}
+                            className="rounded-full border border-line px-4 py-2 text-sm font-semibold
+                                       text-mist hover:border-rose hover:text-rose">
+                      Remove
+                    </button>
+                  )}
                 </div>
                 <input ref={picker} type="file" accept="image/*" onChange={choose} className="hidden" />
                 <p className="text-[11px] text-mist mt-1.5 leading-snug">
-                  Cropped to a square. Place photos stay camera-only.
+                  {avatar
+                    ? 'Cropped to a square. Place photos stay camera-only.'
+                    : 'No photo — your initial is used instead.'}
                 </p>
               </div>
             </div>
