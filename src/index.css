@@ -182,3 +182,9 @@ body {
   white-space: nowrap; font-size: 10px; font-weight: 600; text-decoration: none;
   color: #EEF3F1; text-shadow: 0 1px 4px rgba(0,0,0,.95);
 }
+
+/* Group alerts: a flash to catch the eye, then a word that throbs. */
+@keyframes tk-alert-flash { 0%, 100% { filter: brightness(1) } 50% { filter: brightness(1.35) } }
+@keyframes tk-alert-word { from { transform: scale(1) } to { transform: scale(1.08) } }
+.tk-alert { animation: tk-alert-flash .45s ease-in-out 8; }
+.tk-alert-word { animation: tk-alert-word .5s ease-in-out infinite alternate; }

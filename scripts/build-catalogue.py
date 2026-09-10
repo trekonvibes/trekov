@@ -110,6 +110,12 @@ for n in range(0, len(files), 40):
             "license": em.get("LicenseShortName",{}).get("value",""), "licenseUrl": em.get("LicenseUrl",{}).get("value","")}
     time.sleep(0.5)
 
+# Wikidata points for some big features sit where no road goes (Pangong Tso's is
+# out in the lake, on the far side of the LAC). Use the spot visitors drive to.
+ROAD_POINTS = {"Pangong Tso": (33.93, 78.44)}
+for c in chosen:
+    if c["name"] in ROAD_POINTS: c["lat"], c["lng"] = ROAD_POINTS[c["name"]]
+
 out = []
 for c in chosen:
     m = meta.get(c["image"]) or meta.get(c["image"].replace("_"," "))

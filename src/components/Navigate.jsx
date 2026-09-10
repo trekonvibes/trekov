@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   bearing, compassPoint, distance, distanceAlongRemaining, formatDistance, formatDuration, snapToPath,
 } from '../lib/geo'
@@ -15,6 +15,7 @@ import { getPlace, selectSharing, useStore } from '../lib/store'
 import { BackIcon, CalendarIcon, Logo } from './Icons'
 import { VEHICLES } from './VehicleIcons'
 import Voice from './Voice'
+import { AlertButtons, AlertOverlay, playAlert, unlockAlertAudio } from './GroupAlerts'
 import Portal from './Portal'
 import { currentVehicle, mapplsUrl } from '../lib/handoff'
 
@@ -58,6 +59,15 @@ export default function Navigate({ place, trip, me, onClose }) {
   const [routeState, setRouteState] = useState('idle') // idle | loading | ready | none
   const [online, setOnline] = useState(navigator.onLine)
   const [members, setMembers] = useState([])
+  // A STOP / WAIT / LET'S GO from someone in the group, shown full screen.
+  const [alertIn, setAlertIn] = useState(null)
+  const dismissAlert = useCallback(() => setAlertIn(null), [])
+  // Sound is only allowed after a tap; the first one on this screen unlocks it.
+  useEffect(() => {
+    const unlock = () => unlockAlertAudio()
+    window.addEventListener('pointerdown', unlock, { once: true })
+    return () => window.removeEventListener('pointerdown', unlock)
+  }, [])
   const [saving, setSaving] = useState(null)
   const mapsRefused = useMapsRefused()
   // The two download sizes, worked out before anything is fetched.
@@ -352,7 +362,10 @@ export default function Navigate({ place, trip, me, onClose }) {
   /* --------------------------------------------------------------- party */
   useEffect(() => {
     if (!trip) return
-    partyRef.current = joinParty(trip.id, me, setMembers)
+    partyRef.current = joinParty(trip.id, me, setMembers, undefined, (a) => {
+      setAlertIn(a)
+      playAlert(a.kind, a.name)
+    })
     return () => { partyRef.current?.leave(); partyRef.current = null }
   }, [trip, me])
 
@@ -490,6 +503,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   return (
     <Portal>
       <div className="fixed inset-0 z-[1400] bg-black flex justify-center" role="dialog" aria-label={`Navigate to ${place.name}`}>
+      <AlertOverlay alert={alertIn} onDismiss={dismissAlert} />
         <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line">
           <header className="flex items-center gap-2 px-3 h-14 border-b border-line shrink-0">
             <button onClick={onClose} className="text-mist hover:text-white p-1" aria-label="Stop navigating">
@@ -521,7 +535,8 @@ export default function Navigate({ place, trip, me, onClose }) {
               shared has someone on the other end of the link, and anyone
               opening it lands in the same room. */}
           {trip && (
-            <div className="flex items-center justify-end gap-2 px-3 py-1.5 border-b border-line shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-line shrink-0">
+              <AlertButtons onSend={(kind) => partyRef.current?.alert(kind)} />
               <Voice tripId={trip.id} me={me} />
             </div>
           )}

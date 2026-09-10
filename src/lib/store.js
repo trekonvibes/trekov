@@ -138,7 +138,9 @@ function load() {
       ...saved,
       profile,
       users,
-      places: { ...base.places, ...saved.places },
+      // Catalogue places come from the build, so the build's copy wins (fixed
+      // coordinates, new photos); places the traveller added stay as saved.
+      places: { ...saved.places, ...base.places },
       reviews,
       posts: ([
         ...saved.posts.map((p) => (seedById.has(p.id) ? { ...p, media: seedById.get(p.id).media } : p)),

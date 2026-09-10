@@ -36,13 +36,14 @@ export function realtimeTransport(supabase) {
       channel
         .on('broadcast', { event: 'pos' }, ({ payload }) => onMessage(payload))
         .on('broadcast', { event: 'leave' }, ({ payload }) => onMessage(payload))
+        .on('broadcast', { event: 'alert' }, ({ payload }) => onMessage(payload))
         .subscribe()
       return () => { supabase.removeChannel(channel); channel = null }
     },
     send(message) {
       // Realtime send is async and can reject while the socket reconnects;
       // a dropped position update is not worth surfacing to the traveller.
-      channel?.send({ type: 'broadcast', event: message.type === 'leave' ? 'leave' : 'pos', payload: message })
+      channel?.send({ type: 'broadcast', event: ['leave', 'alert'].includes(message.type) ? message.type : 'pos', payload: message })
         ?.catch?.(() => {})
     },
   }
@@ -63,7 +64,10 @@ export const colourFor = (id) => {
  * @param onMembers called with the current member list whenever it changes
  * @returns { update(position), leave() }
  */
-export function joinParty(tripId, me, onMembers, transport) {
+/** Alerts anyone on the trip can shout to everyone else. */
+export const ALERT_KINDS = ['stop', 'wait', 'go']
+
+export function joinParty(tripId, me, onMembers, transport, onAlert) {
   transport = transport ?? defaultTransport()
   const members = new Map()
   let mine = null
@@ -81,6 +85,10 @@ export function joinParty(tripId, me, onMembers, transport) {
 
   const leaveTransport = transport.join(tripId, (msg) => {
     if (!msg || msg.id === me.id) return
+    if (msg.type === 'alert') {
+      if (ALERT_KINDS.includes(msg.kind)) onAlert?.({ kind: msg.kind, name: msg.name || 'Someone', at: msg.at || Date.now() })
+      return
+    }
     if (msg.type === 'leave') {
       if (members.delete(msg.id)) publish()
       return
@@ -118,6 +126,11 @@ export function joinParty(tripId, me, onMembers, transport) {
      *                    nothing to repeat.
      * @param look.hideFrom  member ids who should not be shown this position.
      */
+    /** Tell everyone on the trip to stop, wait, or get going. */
+    alert(kind) {
+      if (!ALERT_KINDS.includes(kind)) return
+      transport.send({ type: 'alert', id: me.id, name: me.name, kind, at: Date.now() })
+    },
     update(position, look = {}) {
       if (look.share === false) {
         // Tell the others to drop the stale marker rather than leaving it
