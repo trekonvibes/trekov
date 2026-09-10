@@ -67,6 +67,7 @@
   .btn-ghost { border-color: var(--line); color: var(--text); }
   .btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
   .btn-sm { padding: 9px 17px; font-size: 14px; }
+  .nav-cta { display: flex; gap: 10px; }
 
   /* -------------------------------------------------------------- hero -- */
   header.hero { position: relative; overflow: hidden; padding: clamp(64px, 10vw, 132px) 0 0; }
@@ -231,7 +232,10 @@
       <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><defs><linearGradient id="n" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs><path fill="url(#n)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
       trekov
     </a>
-    <a class="btn btn-primary btn-sm" href="/app/">Try the demo</a>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="/app/?auth=signin#profile">Sign in</a>
+      <a class="btn btn-primary btn-sm" href="/app/?auth=signup#profile">Sign up</a>
+    </div>
   </div>
 </nav>
 
@@ -246,10 +250,10 @@
         whole itinerary to whoever is coming.
       </p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="/app/">Try the demo</a>
-        <a class="btn btn-ghost" href="#early">Get early access</a>
+        <a class="btn btn-primary" href="/app/?auth=signup#profile">Sign up</a>
+        <a class="btn btn-ghost" href="/app/?auth=signin#profile">Sign in</a>
       </div>
-      <p class="note">No account needed for the demo. Everything stays on your device.</p>
+      <p class="note">Free. We email you a one-time link — no password to set or remember.</p>
     </div>
 
     <div class="phones">
@@ -379,7 +383,7 @@
       trekov
     </span>
     <span>trekov.com <span class="dot">·</span> Made in India</span>
-    <span><a href="/app/">Try the demo</a> <span class="dot">·</span> <a href="mailto:punit13690@gmail.com">Contact</a></span>
+    <span><a href="/app/?auth=signin#profile">Sign in</a> <span class="dot">·</span> <a href="mailto:punit13690@gmail.com">Contact</a></span>
   </div>
 </footer>
 
