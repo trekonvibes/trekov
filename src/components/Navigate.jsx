@@ -81,6 +81,10 @@ export default function Navigate({ place, trip, me, onClose }) {
   }, [trip, place.id])
 
   const dest = useMemo(() => ({ lat: place.lat, lng: place.lng }), [place.lat, place.lng])
+  // Read inside the map-creation effect, which must not re-run when the
+  // itinerary changes — a ref rather than a dependency.
+  const destIsTripStop = useRef(false)
+  destIsTripStop.current = Boolean(tripStops)
   const bearingToDest = pos ? bearing(pos, dest) : null
 
   // Map-matching: ride the route line rather than the raw fix. Consumer GPS is
@@ -174,7 +178,12 @@ export default function Navigate({ place, trip, me, onClose }) {
     createMap(host.current, { center: [dest.lat, dest.lng], zoom: 9, mapType }).then((d) => {
       if (!alive) { d.destroy(); return }
       drv.current = d
-      d.htmlMarker([dest.lat, dest.lng], PIN_HTML, { size: [54, 60], anchor: [27, 56] })
+      // Only when this is a lone destination. On a trip it is stop 1 and is
+      // drawn with the rest of the numbered sequence below — drawing both put
+      // an unnumbered circle where the "1" should have been.
+      if (!destIsTripStop.current) {
+        d.htmlMarker([dest.lat, dest.lng], PIN_HTML, { size: [54, 60], anchor: [27, 56] })
+      }
       offDrag = d.onDragStart(() => setFollow(false))
       setEngine(d.kind)
     })
@@ -197,10 +206,13 @@ export default function Navigate({ place, trip, me, onClose }) {
   useEffect(() => {
     const d = drv.current
     if (!d || !tripStops) return
-    const markers = tripStops.slice(1).map((p, i) => d.htmlMarker(
+    // From one, not two. The first remaining stop is where you are heading
+    // right now, and skipping it left the sequence starting at 2 with a blank
+    // circle in front of it.
+    const markers = tripStops.map((p, i) => d.htmlMarker(
       [p.lat, p.lng],
-      `<div class="tk-stop"><b>${i + 2}</b><u>${esc(p.name)}</u></div>`,
-      { size: [30, 30], zIndex: 500 },
+      `<div class="tk-stop${i === 0 ? ' is-next' : ''}"><b>${i + 1}</b><u>${esc(p.name)}</u></div>`,
+      { size: [30, 30], zIndex: 500 + (i === 0 ? 1 : 0) },
     ))
     return () => markers.forEach((m) => m.remove())
   }, [tripStops, engine])

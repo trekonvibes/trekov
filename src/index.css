@@ -176,6 +176,10 @@ body {
   font-size: 12px; font-weight: 700; display: grid; place-items: center;
   box-shadow: 0 4px 10px rgba(0,0,0,.6);
 }
+/* The stop you are heading for right now, so it reads apart from the ones
+   after it without breaking the numbered sequence. */
+.tk-stop.is-next b { background: #00C08B; color: #06120D; border-color: #EEF3F1; }
+
 .tk-stop u {
   position: absolute; top: 30px; left: 50%; translate: -50% 0;
   white-space: nowrap; font-size: 10px; font-weight: 600; text-decoration: none;
