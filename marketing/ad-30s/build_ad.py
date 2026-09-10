@@ -89,10 +89,10 @@ final = os.path.join(HERE, "trekov-ad-30s-vertical.mp4")
 music = os.path.join(A, "music-hills-and-highways.mp3")
 vo = os.path.join(A, "voiceover-hinglish.mp3")
 run(["ffmpeg", "-y", "-i", video, "-i", music, "-i", vo, "-filter_complex",
-     "[2:a]adelay=300|300,volume=1.6,apad=pad_dur=2[vo];"
+     "[2:a]adelay=300|300,volume=1.6,apad=pad_dur=2,asplit=2[vo][vo2];"
      "[1:a]volume=0.55,afade=t=in:st=0:d=0.4,afade=t=out:st=28:d=2[mus];"
      "[mus][vo]sidechaincompress=threshold=0.05:ratio=6:attack=20:release=400[duck];"
-     "[duck][vo]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]",
+     "[duck][vo2]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]",
      "-map", "0:v", "-map", "[a]", "-t", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
      "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", final])
 print("built", final)

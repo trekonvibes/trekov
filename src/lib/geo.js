@@ -30,8 +30,11 @@ export function bearing(a, b) {
   return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360
 }
 
-export const formatDistance = (m) =>
-  m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`
+// Rounded before choosing the unit, so 995 m reads "1.0 km" rather than "1000 m".
+export const formatDistance = (m) => {
+  const r = Math.round(m / 10) * 10
+  return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(m < 9950 ? 1 : 0)} km`
+}
 
 export function formatDuration(s) {
   const h = Math.floor(s / 3600)

@@ -6,6 +6,7 @@ import { encodeTrip, shareLink } from '../lib/share'
 import { mapsUrl } from '../lib/format'
 import { distance as straightLine, formatDistance, formatDuration } from '../lib/geo'
 import { getTripRoute } from '../lib/route'
+import { baseOf } from '../lib/vehicleArt'
 import { BackIcon, CalendarIcon, CloseIcon, PlusIcon, SendIcon } from './Icons'
 import AddStop from './AddStop'
 import Bookings from './Bookings'
@@ -17,7 +18,7 @@ import Invite from './Invite'
 // reopening a trip doesn't pay for another routing call.
 const legCache = new Map()
 const lastVehicle = () => { try { return localStorage.getItem('trekov.vehicle') || 'car' } catch { return 'car' } }
-const routeMode = (v) => (/bike|classic|cruiser|commuter|scooter/.test(v) ? 'bike' : 'car')
+const routeMode = baseOf
 
 function useLegs(stops) {
   const mode = routeMode(lastVehicle())
@@ -94,7 +95,13 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
         </button>
       </header>
 
-      {msg && <p className="px-4 py-2 text-sm text-brand border-b border-line">{msg}</p>}
+      {/* Floats over the page: an inline banner pushed everything down and then
+          snapped it back, so the next tap landed on the wrong button (a stop's
+          remove ×, in testing). */}
+      {msg && (
+        <p role="status" className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full bg-white text-ink
+                                     text-sm font-medium px-4 py-2 shadow-lg pointer-events-none">{msg}</p>
+      )}
       {link && (
         <p className="px-4 py-2 text-[11px] text-mist break-all border-b border-line">{link}</p>
       )}

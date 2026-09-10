@@ -1,4 +1,4 @@
-import { vehicleSvg } from '../lib/vehicleArt'
+import { MODELS, vehicleSvg } from '../lib/vehicleArt'
 
 const wrap = (kind) => ({ size = 40, id = 'v', colour = 'green', className = '' }) => (
   <span className={className} style={{ lineHeight: 0 }}
@@ -8,9 +8,7 @@ const wrap = (kind) => ({ size = 40, id = 'v', colour = 'green', className = '' 
 export const CarIcon = wrap('car')
 export const BikeIcon = wrap('bike')
 
-export const VEHICLES = [
-  { id: 'car',  label: 'Car',  Icon: CarIcon },
-  { id: 'bike', label: 'Bike', Icon: BikeIcon },
-]
+/** Everything in the vehicle picker, cars first. `base` is 'car' or 'bike'. */
+export const VEHICLES = MODELS.map((m) => ({ ...m, Icon: wrap(m.id) }))
 
 export { COLOURS, VEHICLE_SVG } from '../lib/vehicleArt'

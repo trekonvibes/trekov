@@ -14,6 +14,9 @@ import { getBlob } from './media'
 import {
   applyRemote, getState, meId as LOCAL_ME, setSyncState,
 } from './store'
+import { PLACES as CATALOGUE } from './seed'
+
+const CATALOGUE_IDS = new Set(CATALOGUE.map((p) => p.id))
 
 const CHUNK = 500
 
@@ -98,18 +101,43 @@ async function pushMine(userId) {
   const s = getState()
   const mine = (rows, key = 'authorId') => rows.filter((r) => r[key] === LOCAL_ME || r[key] === userId)
 
-  // Places I added, before the posts that reference them.
-  const places = Object.values(s.places).filter((p) => p.addedBy === LOCAL_ME || p.addedBy === userId)
-  if (places.length) {
-    const { error } = await supabase.from('places').upsert(places.map((p) => ({
-      id: p.id, name: p.name, region: p.region ?? '', country: p.country ?? '',
-      lat: p.lat, lng: p.lng, best_time: p.bestTime ?? '', blurb: p.blurb ?? '',
-      added_by: userId, added_at: p.addedAt ?? new Date().toISOString(),
-    })))
+  // Places I added, before the posts that reference them. Catalogue places
+  // are loaded on the server separately (supabase/catalogue-places.sql).
+  const row = (p) => ({
+    id: p.id, name: p.name, region: p.region ?? '', country: p.country ?? '',
+    lat: p.lat, lng: p.lng, best_time: p.bestTime ?? '', blurb: p.blurb ?? '',
+    added_by: userId, added_at: p.addedAt ?? new Date().toISOString(),
+  })
+  const places = Object.values(s.places)
+    .filter((p) => (p.addedBy === LOCAL_ME || p.addedBy === userId) && !CATALOGUE_IDS.has(p.id))
+  // A Google place (pl_g_) may already be on the server from someone else who
+  // found it first; theirs stands, and updating it would be refused.
+  const [google, created] = [places.filter((p) => p.id.startsWith('pl_g_')), places.filter((p) => !p.id.startsWith('pl_g_'))]
+  if (created.length) {
+    const { error } = await supabase.from('places').upsert(created.map(row))
+    if (error) throw error
+  }
+  if (google.length) {
+    const { error } = await supabase.from('places').upsert(google.map(row), { onConflict: 'id', ignoreDuplicates: true })
     if (error) throw error
   }
 
-  for (const post of mine(s.posts)) {
+  // Only send rows whose place the server has. One missing place used to
+  // fail the whole sync ("violates foreign key constraint saves_place_id_fkey");
+  // now that row waits on the device and everything else goes through.
+  const wanted = [...new Set([
+    ...s.savedPlaces, ...mine(s.posts).map((p) => p.placeId), ...mine(s.reviews, 'userId').map((r) => r.placeId),
+  ])]
+  const onServer = new Set()
+  for (let i = 0; i < wanted.length; i += 150) {
+    const { data, error } = await supabase.from('places').select('id').in('id', wanted.slice(i, i + 150))
+    if (error) throw error
+    data.forEach((r) => onServer.add(r.id))
+  }
+  const held = wanted.filter((id) => !onServer.has(id))
+  if (held.length) console.warn('Trekov: waiting for these places to reach the server:', held)
+
+  for (const post of mine(s.posts).filter((p) => onServer.has(p.placeId))) {
     const path = await uploadPhoto(post, userId)
     if (!path) continue
     const { error } = await supabase.from('posts').upsert({
@@ -122,7 +150,7 @@ async function pushMine(userId) {
     if (error) throw error
   }
 
-  const reviews = mine(s.reviews, 'userId')
+  const reviews = mine(s.reviews, 'userId').filter((r) => onServer.has(r.placeId))
   if (reviews.length) {
     const { error } = await supabase.from('reviews').upsert(
       reviews.map((r) => ({
@@ -134,9 +162,10 @@ async function pushMine(userId) {
     if (error) throw error
   }
 
-  if (s.savedPlaces.length) {
+  const saves = s.savedPlaces.filter((id) => onServer.has(id))
+  if (saves.length) {
     const { error } = await supabase.from('saves').upsert(
-      s.savedPlaces.map((placeId) => ({ place_id: placeId, user_id: userId })),
+      saves.map((placeId) => ({ place_id: placeId, user_id: userId })),
     )
     if (error) throw error
   }
@@ -150,6 +179,7 @@ async function pushMine(userId) {
     })))
     if (error) throw error
   }
+  return { held }
 }
 
 /* -------------------------------------------------------------- lifecycle */
@@ -161,8 +191,8 @@ export async function syncNow(userId) {
   if (!supabase || !userId) return
   setSyncState({ status: 'syncing', error: null })
   try {
-    await pushMine(userId)
-    applyRemote(await pullAll(userId), userId)
+    const { held } = await pushMine(userId)
+    applyRemote({ ...(await pullAll(userId)), heldSaves: held }, userId)
     setSyncState({ status: 'synced', at: new Date().toISOString(), error: null })
   } catch (e) {
     console.warn('Trekov: sync failed', e)

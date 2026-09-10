@@ -107,6 +107,7 @@ export function joinParty(tripId, me, onMembers, transport, onAlert) {
       // Carry how they look and whether they are rolling, or every companion
       // renders as a stationary green car regardless of what they sent.
       vehicle: msg.vehicle ?? 'car',
+      model: msg.model,
       colour: msg.colour ?? 'green',
       heading: msg.heading ?? 0,
       moving: Boolean(msg.moving),
@@ -141,7 +142,7 @@ export function joinParty(tripId, me, onMembers, transport, onAlert) {
       mine = {
         type: 'pos', id: me.id, name: me.name,
         lat: position.lat, lng: position.lng,
-        vehicle: look.vehicle, colour: look.colour, heading: look.heading,
+        vehicle: look.vehicle, model: look.model, colour: look.colour, heading: look.heading,
         moving: look.moving,
         hideFrom: look.hideFrom?.length ? look.hideFrom : undefined,
         hello: !mine,

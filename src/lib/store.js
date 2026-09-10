@@ -14,6 +14,7 @@ import { putBlob, delBlob } from './media'
 import { defaultAvatar } from './avatar'
 
 const KEY = 'trekov.state.v2'
+const CATALOGUE_BY_ID = Object.fromEntries(PLACES.map((p) => [p.id, p]))
 const ME = 'u_me'
 
 /**
@@ -78,10 +79,16 @@ export function applyRemote(remote, userId) {
   set({
     ...state,
     users: { ...state.users, ...remote.users },
-    places: { ...state.places, ...remote.places },
+    // The server keeps only a catalogue place's name and position; the
+    // build's copy (photo, credits, kind) stays.
+    places: { ...state.places, ...remote.places, ...CATALOGUE_BY_ID },
     posts: [...unsynced, ...remote.posts],
     reviews: [...unsyncedReviews, ...remote.reviews],
-    savedPlaces: remote.savedPlaces,
+    // Saves the server couldn't take yet stay, rather than vanishing on pull.
+    savedPlaces: [...new Set([
+      ...remote.savedPlaces,
+      ...state.savedPlaces.filter((id) => remote.heldSaves?.includes(id)),
+    ])],
     trips: remote.trips,
   })
 }
@@ -140,7 +147,12 @@ function load() {
       users,
       // Catalogue places come from the build, so the build's copy wins (fixed
       // coordinates, new photos); places the traveller added stay as saved.
-      places: { ...saved.places, ...base.places },
+      // Catalogue places the build no longer has (removed as unreachable,
+      // say) go too, or they would linger in everyone's saved state.
+      places: {
+        ...Object.fromEntries(Object.entries(saved.places ?? {}).filter(([, p]) => p.source !== 'catalogue')),
+        ...base.places,
+      },
       reviews,
       posts: ([
         ...saved.posts.map((p) => (seedById.has(p.id) ? { ...p, media: seedById.get(p.id).media } : p)),

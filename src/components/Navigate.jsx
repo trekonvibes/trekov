@@ -10,7 +10,7 @@ import {
   warmOfflineEngine,
 } from '../lib/offline'
 import { createMap, useMapsRefused } from '../lib/mapDrivers'
-import { COLOURS, vehicleSvg } from '../lib/vehicleArt'
+import { COLOURS, MODELS, baseOf, vehicleSvg } from '../lib/vehicleArt'
 import { getPlace, selectSharing, useStore } from '../lib/store'
 import { BackIcon, CalendarIcon, Logo } from './Icons'
 import { VEHICLES } from './VehicleIcons'
@@ -25,12 +25,30 @@ const NAV_ZOOM = 17
 const SNAP_M = 60
 /** Speed streaks, shared by our own marker and every companion's. */
 const SPEED_STREAKS = (vehicle) =>
-  `<span class="tk-speed ${vehicle === 'bike' ? 'is-bike' : ''}">
+  `<span class="tk-speed ${baseOf(vehicle) === 'bike' ? 'is-bike' : ''}">
      <i style="--dx:-8px;--d:0ms"></i><i style="--dx:0px;--d:110ms"></i>
      <i style="--dx:8px;--d:220ms"></i><i style="--dx:-4px;--d:330ms"></i><i style="--dx:4px;--d:440ms"></i>
    </span>`
 
-const PIN_HTML = '<div class="tk-pin"><div class="tk-pin-img"></div></div>'
+/** Who made the 3D model you are driving — the CC-BY ones require it. */
+function ModelCredit({ id }) {
+  const m = MODELS.find((x) => x.id === id)
+  if (!m?.credit) return <p className="text-[10px] text-mist">Colour applies to Car and Bike; 3D models glow in it.</p>
+  return (
+    <p className="text-[10px] text-mist">
+      3D model by{' '}
+      <a href={m.credit.url} target="_blank" rel="noreferrer" className="underline hover:text-white">{m.credit.by}</a>
+      {' '}· {m.credit.license} · colour shows as the glow under it
+    </p>
+  )
+}
+
+// The destination pin carries the place's photo, like the pins on the main map.
+const pinHtml = (p) => {
+  const src = p?.photo?.thumb
+  const bg = src ? ` style="background-image:url('${src.replace(/'/g, '%27')}')"` : ''
+  return `<div class="tk-pin"><div class="tk-pin-img"${bg}></div></div>`
+}
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
@@ -78,6 +96,8 @@ export default function Navigate({ place, trip, me, onClose }) {
   const [moving, setMoving] = useState(false)
   const [vehicle, setVehicle] = useState(() => pref('trekov.vehicle', 'car'))
   const [colour, setColour] = useState(() => pref('trekov.vehicleColour', 'green'))
+  // Routing only cares about two wheels or four, not which model.
+  const travelMode = baseOf(vehicle)
   const [mapType, setMapType] = useState(() => pref('trekov.navMapType', 'roadmap'))
   const [traffic, setTraffic] = useState(() => pref('trekov.traffic', '1') === '1')
   const [trafficShown, setTrafficShown] = useState(false)
@@ -210,7 +230,7 @@ export default function Navigate({ place, trip, me, onClose }) {
       // drawn with the rest of the numbered sequence below — drawing both put
       // an unnumbered circle where the "1" should have been.
       if (!destIsTripStop.current) {
-        d.htmlMarker([dest.lat, dest.lng], PIN_HTML, { size: [54, 60], anchor: [27, 56] })
+        d.htmlMarker([dest.lat, dest.lng], pinHtml(place), { size: [54, 60], anchor: [27, 56] })
       }
       offDrag = d.onDragStart(() => setFollow(false))
       setEngine(d.kind)
@@ -317,7 +337,7 @@ export default function Navigate({ place, trip, me, onClose }) {
     const html = `<div class="tk-me" style="--rot:${rotate}deg">
                     <div class="tk-me-inner ${moving ? 'is-moving' : 'is-idle'}">
                       ${dust}
-                      ${vehicleSvg(vehicle, { colour, size: 40, id: 'mk' })}
+                      ${vehicleSvg(vehicle, { colour, size: 40, id: 'mk', ring: true })}
                     </div>
                   </div>`
     if (!meMarker.current) {
@@ -343,7 +363,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   // depends on `pos`, and a cleanup there would cancel the request on every
   // GPS tick — so the route would never land while the vehicle was moving.
   const fetchSeq = useRef(0)
-  useEffect(() => { fetchSeq.current++; setRoute(null); setRouteState('idle') }, [vehicle])
+  useEffect(() => { fetchSeq.current++; setRoute(null); setRouteState('idle') }, [travelMode])
   useEffect(() => () => { fetchSeq.current++ }, [])
 
   useEffect(() => {
@@ -351,14 +371,14 @@ export default function Navigate({ place, trip, me, onClose }) {
     setRouteState('loading')
     const id = ++fetchSeq.current
     const ask = tripStops
-      ? getTripRoute(pos, tripStops.map((p) => ({ lat: p.lat, lng: p.lng })), vehicle)
-      : getRoute(pos, dest, vehicle)
+      ? getTripRoute(pos, tripStops.map((p) => ({ lat: p.lat, lng: p.lng })), travelMode)
+      : getRoute(pos, dest, travelMode)
     ask.then((r) => {
       if (id !== fetchSeq.current) return
       setRoute(r)
       setRouteState(r ? 'ready' : 'none')
     })
-  }, [pos, dest, vehicle, routeState, tripStops])
+  }, [pos, dest, travelMode, routeState, tripStops])
 
   /* --------------------------------------------------------------- party */
   useEffect(() => {
@@ -374,7 +394,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   useEffect(() => {
     if (shown && partyRef.current) {
       partyRef.current.update(shown, {
-        vehicle, colour, heading: course, moving,
+        vehicle: travelMode, model: vehicle, colour, heading: course, moving,
         share: sharing.on, hideFrom: sharing.hiddenFrom,
       })
     }
@@ -392,8 +412,8 @@ export default function Navigate({ place, trip, me, onClose }) {
          <span class="tk-mate-name">${esc(m.name)}</span>
          <span class="tk-me" style="--rot:${m.heading ?? 0}deg">
            <span class="tk-me-inner ${m.moving ? 'is-moving' : 'is-idle'}">
-             ${m.moving ? SPEED_STREAKS(m.vehicle) : ''}
-             ${vehicleSvg(m.vehicle ?? 'car', { colour: m.colour ?? 'green', size: 34, id: `mate-${m.id}` })}
+             ${m.moving ? SPEED_STREAKS(m.model ?? m.vehicle) : ''}
+             ${vehicleSvg(m.model ?? m.vehicle ?? 'car', { colour: m.colour ?? 'green', size: 34, id: `mate-${m.id}`, ring: true })}
            </span>
          </span>
        </div>`,
@@ -558,7 +578,7 @@ export default function Navigate({ place, trip, me, onClose }) {
                   You're more than 150 m off the route.
                 </p>
               )}
-              {route?.modeFallback && vehicle === 'bike' && (
+              {route?.modeFallback && travelMode === 'bike' && (
                 <p className="rounded-xl bg-sun/15 backdrop-blur-xl border border-sun/40 text-sun text-xs px-3 py-2">
                   Bike routing isn't available here — showing the car route.
                 </p>
@@ -678,16 +698,19 @@ export default function Navigate({ place, trip, me, onClose }) {
 
             {picker && (
               <div className="px-3 pb-3 space-y-2.5 border-t border-line pt-3">
-                <div className="flex items-center gap-2">
-                  {VEHICLES.map(({ id, label, Icon }) => (
-                    <button key={id} onClick={() => setVehicle(id)} aria-pressed={vehicle === id}
-                            className={`flex-1 flex items-center justify-center gap-2 rounded-xl border py-1.5 transition
-                                        ${vehicle === id ? 'border-brand bg-brand/12' : 'border-line hover:border-mist'}`}>
-                      <Icon size={26} id={`pick-${id}`} colour={colour} />
-                      <span className={`text-xs font-semibold ${vehicle === id ? 'text-brand' : 'text-mist'}`}>{label}</span>
-                    </button>
-                  ))}
-                </div>
+                {['car', 'bike'].map((base) => (
+                  <div key={base} className="flex items-stretch gap-1.5 overflow-x-auto no-bar" role="radiogroup"
+                       aria-label={base === 'car' ? 'Cars' : 'Bikes'}>
+                    {VEHICLES.filter((v) => v.base === base).map(({ id, label, Icon }) => (
+                      <button key={id} onClick={() => setVehicle(id)} role="radio" aria-checked={vehicle === id}
+                              className={`shrink-0 w-[4.25rem] flex flex-col items-center gap-0.5 rounded-xl border py-1.5 transition
+                                          ${vehicle === id ? 'border-brand bg-brand/12' : 'border-line hover:border-mist'}`}>
+                        <Icon size={30} id={`pick-${id}`} colour={colour} />
+                        <span className={`text-[10px] font-semibold ${vehicle === id ? 'text-brand' : 'text-mist'}`}>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
                 <div className="flex items-center gap-2 overflow-x-auto no-bar" role="radiogroup" aria-label="Vehicle colour">
                   {COLOURS.map((c) => (
                     <button key={c.id} onClick={() => setColour(c.id)} role="radio" aria-checked={colour === c.id}
@@ -697,6 +720,7 @@ export default function Navigate({ place, trip, me, onClose }) {
                             style={{ background: `linear-gradient(135deg, ${c.tint.hi}, ${c.tint.mid} 55%, ${c.tint.lo})` }} />
                   ))}
                 </div>
+                <ModelCredit id={vehicle} />
               </div>
             )}
 

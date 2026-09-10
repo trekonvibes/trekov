@@ -12,6 +12,8 @@
 //   https://developer.mappls.com/mappls-apps/ios/
 
 /** Mappls understands driving, trucking, biking and walking. */
+import { baseOf } from './vehicleArt'
+
 const MAPPLS_MODE = {
   // Not 'biking': that is a bicycle, and routing a motorcycle down a cycle
   // path is a worse error than sending it the way a car would go. Indian
@@ -59,4 +61,5 @@ export function googleMapsUrl(place, stops = [], mode = 'car') {
 }
 
 /** What the traveller last chose to ride, so the handoff matches it. */
-export const currentVehicle = () => localStorage.getItem('trekov.vehicle') || 'car'
+// Other apps only know car or bike, whichever model is picked here.
+export const currentVehicle = () => baseOf(localStorage.getItem('trekov.vehicle') || 'car')

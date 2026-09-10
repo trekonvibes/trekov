@@ -11,6 +11,41 @@
  * Gradient ids are suffixed per instance so several copies can coexist.
  */
 
+import sedanPng from '../assets/vehicles/sedan.webp'
+import hatchbackPng from '../assets/vehicles/hatchback.webp'
+import suvPng from '../assets/vehicles/suv.webp'
+import pickupPng from '../assets/vehicles/pickup.webp'
+import classicPng from '../assets/vehicles/classic.webp'
+import sportPng from '../assets/vehicles/sport.webp'
+import cruiserPng from '../assets/vehicles/cruiser.webp'
+import commuterPng from '../assets/vehicles/commuter.webp'
+import scooterPng from '../assets/vehicles/scooter.webp'
+
+// Every vehicle you can drive. `car` and `bike` are the drawn ones that take
+// a colour; the rest are free 3D models rendered top-down in Blender
+// (scripts/vehicles/). Their paint is fixed, so the chosen colour becomes a
+// glow under them instead. Names are generic on purpose — they are
+// look-alikes, not the real makes. CC-BY models must stay credited.
+const POLY = (id) => `https://poly.pizza/m/${id}`
+const BY3 = 'CC-BY 3.0'
+export const MODELS = [
+  { id: 'car',       base: 'car',  label: 'Car' },
+  { id: 'sedan',     base: 'car',  label: 'Sedan',     src: sedanPng,     credit: { by: 'Kenney', license: 'CC0', url: 'https://kenney.nl/assets/car-kit' } },
+  { id: 'hatchback', base: 'car',  label: 'Hatchback', src: hatchbackPng, credit: { by: 'Kay Lousberg', license: 'CC0', url: POLY('BG0KAhmGDt') } },
+  { id: 'suv',       base: 'car',  label: 'SUV',       src: suvPng,       credit: { by: 'IvOfficial', license: BY3, url: POLY('8zk4o6nALW') } },
+  { id: 'pickup',    base: 'car',  label: 'Pickup',    src: pickupPng,    credit: { by: 'Muhammad Reyhan', license: BY3, url: POLY('4qjS9tFhsJg') } },
+  { id: 'bike',      base: 'bike', label: 'Bike' },
+  { id: 'classic',   base: 'bike', label: 'Classic',   src: classicPng,   credit: { by: 'Zsky', license: BY3, url: POLY('9SwnIlPjNv') } },
+  { id: 'cruiser',   base: 'bike', label: 'Cruiser',   src: cruiserPng,   credit: { by: 'Poly by Google', license: BY3, url: POLY('5_MTCnqfUTr') } },
+  { id: 'sport',     base: 'bike', label: 'Sport',     src: sportPng,     credit: { by: 'Poly by Google', license: BY3, url: POLY('dse64pqMKAR') } },
+  { id: 'commuter',  base: 'bike', label: 'Commuter',  src: commuterPng,  credit: { by: 'Poly by Google', license: BY3, url: POLY('cFvmALDjMKw') } },
+  { id: 'scooter',   base: 'bike', label: 'Scooter',   src: scooterPng,   credit: { by: 'Jasmine Roberts', license: BY3, url: POLY('blGLclvvdEM') } },
+]
+const MODEL = Object.fromEntries(MODELS.map((m) => [m.id, m]))
+
+/** 'car' or 'bike' — all routing and the speed streaks need to know. */
+export const baseOf = (kind) => MODEL[kind]?.base ?? (kind === 'bike' ? 'bike' : 'car')
+
 export const COLOURS = [
   { id: 'green',  label: 'Trek green', tint: { hi: '#8CF3CE', mid: '#00C08B', lo: '#0A6E51' } },
   { id: 'red',    label: 'Red',        tint: { hi: '#FF9A94', mid: '#E0342E', lo: '#7A1512' } },
@@ -112,9 +147,20 @@ const BIKE = (id, t) => `
 
 const ART = { car: CAR, bike: BIKE }
 
-/** SVG markup for one vehicle. `colour` is a COLOURS id. */
-export function vehicleSvg(kind, { colour = 'green', size = 40, id = 'v' } = {}) {
+/** Markup for one vehicle. `colour` is a COLOURS id; `ring` adds the colour glow under 3D models. */
+// A companion on an older or newer version may send a kind we don't know;
+// it falls back to the drawn car or bike rather than breaking the map.
+export function vehicleSvg(kind, { colour = 'green', size = 40, id = 'v', ring = false } = {}) {
   const t = colourById(colour).tint
+  const model = MODEL[kind]
+  if (model?.src) {
+    // Bikes are narrow, so they are drawn a touch smaller than the box.
+    const px = Math.round(size * (model.base === 'bike' ? 1.05 : 1.2))
+    const glow = ring ? `background:radial-gradient(closest-side,${t.mid}cc,${t.mid}40 62%,transparent);` : ''
+    return `<span style="display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:50%;${glow}" aria-hidden="true">`
+      + `<img src="${model.src}" width="${px}" height="${px}" alt="" draggable="false" style="max-width:none;display:block;pointer-events:none"></span>`
+  }
+  if (!ART[kind]) kind = baseOf(kind)
   return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true">${defs(id, t)}${ART[kind](id, t)}</svg>`
 }
 
