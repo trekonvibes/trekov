@@ -346,12 +346,31 @@ export default function MapView({ onOpenPlace, onNewPlace, onGoLive, onOpenTrip,
   )
 }
 
+// Closing the card is remembered on this device: the promo stays closed for
+// good; a particular trip's card stays closed for that trip only.
+const HIDE_KEY = 'trekov.groupCardHidden'
+const hiddenCards = () => { try { return JSON.parse(localStorage.getItem(HIDE_KEY) || '[]') } catch { return [] } }
+
 function GroupTripCard({ trip, onGoLive, onOpenTrip, onStartGroup }) {
+  const cardId = trip ? trip.id : 'promo'
+  const [hidden, setHidden] = useState(() => hiddenCards().includes(cardId))
+  useEffect(() => { setHidden(hiddenCards().includes(cardId)) }, [cardId])
+  if (hidden) return null
+  const close = () => {
+    try { localStorage.setItem(HIDE_KEY, JSON.stringify([...new Set([...hiddenCards(), cardId])])) } catch { /* private mode */ }
+    setHidden(true)
+  }
+  const closeBtn = (
+    <button onClick={close} aria-label="Close" className="absolute top-2 right-2 text-mist hover:text-white p-1">
+      <CloseIcon size={16} />
+    </button>
+  )
   const shell = 'absolute inset-x-3 bottom-4 z-[600] rounded-2xl border border-brand/40 bg-ink/95 backdrop-blur-xl shadow-xl p-3.5 rise'
   if (!trip) {
     return (
       <div className={shell}>
-        <div className="flex items-start gap-3">
+        {closeBtn}
+        <div className="flex items-start gap-3 pr-6">
           <span className="grid place-items-center size-10 rounded-xl bg-brand/15 text-brand shrink-0"><RouteIcon size={20} /></span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Ride together, live</p>
@@ -369,7 +388,8 @@ function GroupTripCard({ trip, onGoLive, onOpenTrip, onStartGroup }) {
   const riders = trip.members?.length ?? 0
   return (
     <div className={shell}>
-      <div className="flex items-center gap-3">
+      {closeBtn}
+      <div className="flex items-center gap-3 pr-6">
         <span className="relative grid place-items-center size-10 rounded-xl bg-brand/15 text-brand shrink-0">
           <RouteIcon size={20} />
           <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-brand animate-pulse" aria-hidden />
