@@ -1,9 +1,6 @@
 // Slippy-map tile maths and great-circle helpers, shared by routing,
 // offline tile download and the navigation compass.
 
-export const TILE_URL = (z, x, y) =>
-  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`
-
 export const lngToTileX = (lng, z) => Math.floor(((lng + 180) / 360) * 2 ** z)
 
 export function latToTileY(lat, z) {

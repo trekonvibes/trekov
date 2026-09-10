@@ -6,10 +6,10 @@ import { arrivalAt } from '../lib/format'
 import { getRoute, getTripRoute, instruction } from '../lib/route'
 import { colourFor, joinParty } from '../lib/party'
 import {
-  DETAIL, downloadTiles, formatBytes, keepTiles, planRouteDownload, rememberSavedZoom, savedMaxZoom,
-  storageRoom,
+  DETAIL, downloadTiles, formatBytes, keepTiles, offlineTileTemplate, planRouteDownload, storageRoom,
+  warmOfflineEngine,
 } from '../lib/offline'
-import { createMap } from '../lib/mapDrivers'
+import { createMap, useMapsRefused } from '../lib/mapDrivers'
 import { COLOURS, vehicleSvg } from '../lib/vehicleArt'
 import { getPlace, selectSharing, useStore } from '../lib/store'
 import { BackIcon, CalendarIcon, Logo } from './Icons'
@@ -37,7 +37,7 @@ const pref = (key, fallback) => localStorage.getItem(key) ?? fallback
 
 export default function Navigate({ place, trip, me, onClose }) {
   const host = useRef(null)
-  const drv = useRef(null)            // the map driver, Google or Leaflet
+  const drv = useRef(null)            // the map driver, Google or MapLibre
   const meMarker = useRef(null)
   const routeLines = useRef([])
   const trailLines = useRef([])
@@ -51,7 +51,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   const resetZoom = useRef(true)
   const idleTimer = useRef(null)
 
-  const [engine, setEngine] = useState(null)   // 'google' | 'leaflet' once ready
+  const [engine, setEngine] = useState(null)   // 'google' | 'maplibre' once ready
   const [pos, setPos] = useState(null)
   const [gpsError, setGpsError] = useState('')
   const [route, setRoute] = useState(null)
@@ -59,6 +59,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   const [online, setOnline] = useState(navigator.onLine)
   const [members, setMembers] = useState([])
   const [saving, setSaving] = useState(null)
+  const mapsRefused = useMapsRefused()
   // The two download sizes, worked out before anything is fetched.
   const [offlinePlan, setOfflinePlan] = useState(null)
   const downloadAbort = useRef(null)
@@ -108,7 +109,7 @@ export default function Navigate({ place, trip, me, onClose }) {
   useEffect(() => { localStorage.setItem('trekov.vehicleColour', colour) }, [colour])
   useEffect(() => { localStorage.setItem('trekov.navMapType', mapType); drv.current?.setMapType(mapType) }, [mapType, engine])
   // setTraffic reports whether the layer is actually showing — Google has one,
-  // the offline Leaflet engine does not — and the route style follows that
+  // the offline MapLibre engine does not — and the route style follows that
   // rather than the button, so the offline map keeps its solid line.
   useEffect(() => {
     localStorage.setItem('trekov.traffic', traffic ? '1' : '0')
@@ -191,7 +192,6 @@ export default function Navigate({ place, trip, me, onClose }) {
       zoom: here ? NAV_ZOOM : 9,
       mapType,
       offline: !online,
-      nativeZoomCap: online ? null : savedMaxZoom(),
     }).then((d) => {
       if (!alive) { d.destroy(); return }
       drv.current = d
@@ -220,7 +220,7 @@ export default function Navigate({ place, trip, me, onClose }) {
     // `online` is here on purpose: a Google map that has lost its network
     // stays on screen and fetches nothing, so the engine has to change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dest, online])
+  }, [dest, online, mapsRefused])
 
   // Numbered markers for the other stops on a multi-stop trip.
   useEffect(() => {
@@ -433,15 +433,20 @@ export default function Navigate({ place, trip, me, onClose }) {
     setMapType(types[(i + 1) % types.length].id)
   }
 
-  /** Cost out both detail levels for this route before fetching anything. */
+  /** Cost out both corridor widths for this route before fetching anything. */
   async function planOffline() {
     if (!route?.coordinates?.length) return
-    const { free } = await storageRoom()
-    setOfflinePlan({
-      standard: planRouteDownload(route.coordinates, DETAIL.standard.maxZoom),
-      detailed: planRouteDownload(route.coordinates, DETAIL.detailed.maxZoom),
-      free,
-    })
+    try {
+      // The tile index names this week's build; the plan fetches from it.
+      const [{ free }, template] = await Promise.all([storageRoom(), offlineTileTemplate()])
+      setOfflinePlan({
+        standard: planRouteDownload(route.coordinates, 'standard', template),
+        wide: planRouteDownload(route.coordinates, 'wide', template),
+        free,
+      })
+    } catch (e) {
+      setSaving({ error: e.message })
+    }
   }
 
   async function saveOffline(level) {
@@ -451,6 +456,8 @@ export default function Navigate({ place, trip, me, onClose }) {
     // Ask the browser not to evict these under storage pressure — otherwise a
     // phone low on space can clear the map before the signal ever drops.
     await keepTiles()
+    // The offline engine itself has to be on the phone too, not just its tiles.
+    warmOfflineEngine()
     const ctrl = new AbortController()
     downloadAbort.current = ctrl
     setSaving({ done: 0, total: plan.urls.length })
@@ -460,8 +467,6 @@ export default function Navigate({ place, trip, me, onClose }) {
         (done, total, failed) => setSaving({ done, total, failed }),
         { signal: ctrl.signal },
       )
-      // Only a finished download sets the zoom the offline map may rely on.
-      if (!res.cancelled) rememberSavedZoom(plan.maxZoom)
       setSaving({
         total: plan.urls.length, done: res.done ?? plan.urls.length, failed: res.failed,
         finished: !res.cancelled, cancelled: Boolean(res.cancelled),

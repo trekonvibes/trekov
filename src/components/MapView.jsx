@@ -3,7 +3,7 @@ import {
   addStop, createTrip, getPlace, selectPlaceSearch, selectPlaces, selectTrips,
   toggleSavePlace, useStore,
 } from '../lib/store'
-import { createMap, preferredMapType, rememberMapType } from '../lib/mapDrivers'
+import { createMap, preferredMapType, rememberMapType, useMapsRefused } from '../lib/mapDrivers'
 import { adoptHit } from '../lib/adopt'
 import { searchAnywhere } from '../lib/geocode'
 import { CloseIcon, PlusIcon, SaveIcon, SearchIcon, Wordmark } from './Icons'
@@ -50,6 +50,7 @@ function markerHtml(node) {
 }
 
 export default function MapView({ onOpenPlace, onNewPlace }) {
+  const mapsRefused = useMapsRefused()
   const host = useRef(null)
   const drv = useRef(null)
   const markers = useRef([])
@@ -79,9 +80,14 @@ export default function MapView({ onOpenPlace, onNewPlace }) {
       offZoom = d.onZoomEnd(setZoom)
       setEngine(d.kind)
     })
-    return () => { alive = false; offZoom(); drv.current?.destroy(); drv.current = null; markers.current = []; setEngine(null) }
+    return () => {
+      alive = false
+      // Tearing down a map Google refused must not take the whole app with it.
+      try { offZoom(); drv.current?.destroy() } catch (e) { console.info("Trekov: map teardown —", e?.message) }
+      drv.current = null; markers.current = []; setEngine(null)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mapsRefused])
 
   useEffect(() => { rememberMapType(mapType); drv.current?.setMapType(mapType) }, [mapType, engine])
   useEffect(() => { drv.current?.setTraffic(traffic) }, [traffic, engine])
@@ -90,7 +96,7 @@ export default function MapView({ onOpenPlace, onNewPlace }) {
   useEffect(() => {
     const d = drv.current
     if (!d) return
-    markers.current.forEach((m) => m.remove())
+    markers.current.forEach((m) => m?.remove())
     markers.current = cluster(places, zoom).map((node) => {
       const single = node.places.length === 1
       return d.htmlMarker([node.lat, node.lng], markerHtml(node), {
@@ -245,7 +251,7 @@ export default function MapView({ onOpenPlace, onNewPlace }) {
           </ul>
         )}
 
-        {/* Map style and live traffic — Google only; Leaflet has neither. */}
+        {/* Map style and live traffic — Google only; the offline MapLibre map has neither. */}
         {!q && engine === 'google' && (
           <div className="mt-2 flex gap-1.5 overflow-x-auto no-bar">
             {types.map((t) => (

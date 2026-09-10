@@ -43,7 +43,7 @@ async function osrmRoute(from, to, mode) {
   return {
     at: Date.now(), via: 'osrm', mode, modeFallback: mode === 'bike',
     distance: r.distance, duration: r.duration, durationInTraffic: null,
-    // Leaflet wants [lat, lng]; GeoJSON gives [lng, lat].
+    // Our drivers take [lat, lng]; GeoJSON gives [lng, lat].
     coordinates: r.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
     steps: (r.legs?.[0]?.steps ?? []).map((s) => ({
       text: '', name: s.name, distance: s.distance,

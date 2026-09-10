@@ -1,4 +1,4 @@
-// Google Maps JavaScript API, exposed through the same shape as the Leaflet
+// Google Maps JavaScript API, exposed through the same shape as the MapLibre
 // driver so screens do not care which engine they got.
 //
 // Custom HTML markers use OverlayView rather than AdvancedMarkerElement: the
@@ -67,7 +67,8 @@ export function createGoogleMap(gm, el, { center, zoom, mapType = 'hybrid', zoom
   const Overlay = htmlOverlayClass(gm)
   let traffic = null
   const toLL = (ll) => ({ lat: ll[0], lng: ll[1] })
-  const listen = (ev, fn) => { const l = map.addListener(ev, fn); return () => l.remove() }
+  // A map Google refused (bad key or referrer) can hand back no listener — unsubscribing must never throw.
+  const listen = (ev, fn) => { const l = map.addListener(ev, fn); return () => l?.remove?.() }
 
   return {
     kind: 'google',

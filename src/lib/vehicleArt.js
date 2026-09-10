@@ -4,7 +4,7 @@
  * Top-down rather than 3/4 isometric because the same artwork is the rotating
  * map marker, and an isometric view looks wrong the moment it turns.
  *
- * Strings, not React: Leaflet's divIcon and the Google OverlayView both take
+ * Strings, not React: MapLibre's Marker element and the Google OverlayView both take
  * HTML, and rendering components through react-dom/server for two icons
  * pulled 77KB into the client bundle.
  *

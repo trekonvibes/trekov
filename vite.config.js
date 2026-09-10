@@ -15,6 +15,13 @@ export default defineConfig({
   server: {
     watch: { ignored: ['**/dist/**', '**/dist-native/**', '**/android/**', '**/ios/**'] },
   },
+  // MapLibre is loaded on demand, so the dev server would otherwise meet it
+  // for the first time mid-session, re-optimise, and reject that first load as
+  // an outdated dependency. Preparing it at startup avoids that.
+  optimizeDeps: { include: ['maplibre-gl'] },
+  // MapLibre starts its workers as ES modules; build them in that format so
+  // the worker it is handed is one it can run.
+  worker: { format: 'es' },
   build: {
     rollupOptions: {
       input: {

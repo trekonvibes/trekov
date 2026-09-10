@@ -48,22 +48,6 @@ body {
 .sheet-up { animation: sheet-up .28s cubic-bezier(.22,1,.36,1) both; }
 
 /* ------------------------------------------------------------------ map -- */
-/* Leaflet paints its own chrome; these override it to match the app. */
-.leaflet-container { background: #0E1413; font-family: var(--font-display); }
-/* Knock the imagery back so the markers and app chrome stay legible on top. */
-.leaflet-tile-pane { filter: brightness(.78) saturate(.85) contrast(1.02); }
-.leaflet-shadow-pane { filter: brightness(1.15); opacity: .85; }
-.leaflet-control-attribution {
-  background: rgba(11,15,14,.72) !important; color: #6B7F78 !important;
-  font-size: 9px !important; backdrop-filter: blur(6px);
-}
-.leaflet-control-attribution a { color: #8FA39C !important; }
-.leaflet-bar a {
-  background: #121917 !important; color: #EEF3F1 !important;
-  border-color: #1F2C28 !important;
-}
-.leaflet-bar a:hover { background: #18211E !important; }
-
 .tk-marker { background: none; border: 0; }
 
 .tk-pin { position: relative; width: 54px; cursor: pointer; }
