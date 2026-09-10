@@ -41,12 +41,12 @@ function markerHtml(node) {
     const thumb = p.cover && !p.cover.blobKey ? p.cover.src : ''
     return `<div class="tk-pin ${p.saved ? 'is-saved' : ''}">
               <div class="tk-pin-img" ${thumb ? `style="background-image:url('${thumb}')"` : ''}></div>
-              <span class="tk-pin-count">${p.postCount}</span>
+              ${p.postCount ? `<span class="tk-pin-count">${p.postCount}</span>` : ''}
               <span class="tk-pin-label">${esc(p.name)}</span>
             </div>`
   }
   const total = places.reduce((n, p) => n + p.postCount, 0)
-  return `<div class="tk-cluster"><b>${places.length}</b><span>${total} photo${total === 1 ? '' : 's'}</span></div>`
+  return `<div class="tk-cluster"><b>${places.length}</b><span>${total ? `${total} photo${total === 1 ? '' : 's'}` : 'places'}</span></div>`
 }
 
 export default function MapView({ onOpenPlace, onNewPlace, onGoLive, onOpenTrip, onStartGroup }) {

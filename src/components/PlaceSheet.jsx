@@ -7,11 +7,12 @@ import { ago, compact, formatDateTime, mapsUrl } from '../lib/format'
 import { CalendarIcon, CloseIcon, HeartIcon, NavIcon, PlusIcon, SaveIcon, StarIcon } from './Icons'
 import Media from './Media'
 import Portal from './Portal'
+import GooglePhotos from './GooglePhotos'
 import PhotoViewer from './PhotoViewer'
 import ReviewSheet from './ReviewSheet'
 
 /** What you get when you tap a place on the map: its photos, newest first. */
-export default function PlaceSheet({ placeId, onClose, onNavigate }) {
+export default function PlaceSheet({ placeId, onClose, onNavigate, onPost }) {
   const [openPost, setOpenPost] = useState(null)
   const [rating, setRating] = useState(false)
   const [tripMenu, setTripMenu] = useState(false)
@@ -81,6 +82,17 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                   {post.authorId === meId && <span className="font-extrabold">· yours</span>}
                 </span>
               </button>
+            ) : place.photo ? (
+              // A reference photo, credited, until the first live Trekov photo.
+              <div className="relative">
+                <img src={place.photo.src} alt={place.name}
+                     className="w-full aspect-[16/11] max-h-[38vh] object-cover bg-raised" />
+                <a href={place.photo.page} target="_blank" rel="noreferrer"
+                   className="absolute top-3 left-3 max-w-[72%] truncate rounded-full bg-black/60 backdrop-blur-sm
+                              text-[10px] text-white/85 px-2.5 py-1">
+                  Photo: {place.photo.by} · {place.photo.license} · Wikimedia Commons
+                </a>
+              </div>
             ) : (
               <div className="w-full aspect-[16/11] max-h-[38vh] bg-raised flex flex-col items-center
                               justify-center text-center px-8">
@@ -115,6 +127,16 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                   Open in Google Maps
                 </a>
               </div>
+
+              {place.postCount === 0 && (
+                <button onClick={() => onPost?.()}
+                        className="mt-3 w-full rounded-2xl border border-brand/40 bg-brand/10 px-4 py-3 text-left">
+                  <span className="block text-sm font-semibold text-brand">Be the first to post a live photo here</span>
+                  <span className="block text-xs text-mist mt-0.5">
+                    Taken in the app, on location — it becomes this place's banner for everyone.
+                  </span>
+                </button>
+              )}
 
               {/* Navigating is the point of opening a place, so it gets the
                   primary button rather than a link buried in the meta row. */}
@@ -202,6 +224,8 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                 )}
               </div>
             </div>
+
+            <GooglePhotos place={place} />
 
             {post && (
               <>

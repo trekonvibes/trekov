@@ -164,7 +164,8 @@ export default function App() {
       </div>
 
       {place && (
-        <PlaceSheet placeId={place} onClose={() => setPlace(null)} onNavigate={startNavigation} />
+        <PlaceSheet placeId={place} onClose={() => setPlace(null)} onNavigate={startNavigation}
+                    onPost={() => { setPlace(null); setComposing(true) }} />
       )}
 
       {nav && getPlace(nav.placeId) && (

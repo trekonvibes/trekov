@@ -9,7 +9,7 @@
 // so a real backend replaces this module alone.
 
 import { useSyncExternalStore } from 'react'
-import { PLACES, POSTS, SEED_REVIEWS, USERS } from './seed'
+import { PLACES, POSTS, RETIRED_DEMO, SEED_REVIEWS, USERS } from './seed'
 import { putBlob, delBlob } from './media'
 import { defaultAvatar } from './avatar'
 
@@ -91,6 +91,26 @@ export function applyRemote(remote, userId) {
 const STOCK_ME = /^https:\/\/i\.pravatar\.cc\/.*trekov-me/
 const ownAvatar = (avatar, handle) => (!avatar || STOCK_ME.test(avatar) ? defaultAvatar(handle || 'you') : avatar)
 
+/**
+ * Clear out the made-up demo users, their posts and reviews, and the demo
+ * places — unless the traveller's own content (a photo, a save, a trip stop)
+ * points at one, in which case that place stays.
+ */
+function retireDemo(st) {
+  const fake = new Set(RETIRED_DEMO.users)
+  const posts = st.posts.filter((p) => !fake.has(p.authorId))
+  const reviews = (st.reviews ?? []).filter((r) => !fake.has(r.userId))
+  const used = new Set([
+    ...posts.map((p) => p.placeId), ...(st.savedPlaces ?? []),
+    ...(st.trips ?? []).flatMap((t) => t.stops.map((x) => x.placeId)),
+  ])
+  const places = Object.fromEntries(Object.entries(st.places)
+    .filter(([id]) => !RETIRED_DEMO.places.includes(id) || used.has(id)))
+  const users = Object.fromEntries(Object.entries(st.users ?? {}).filter(([id]) => !fake.has(id)))
+  const notifications = (st.notifications ?? []).filter((n) => !fake.has(n.by))
+  return { ...st, posts, reviews, places, users, notifications }
+}
+
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || 'null')
@@ -113,7 +133,7 @@ function load() {
     profile.avatar = ownAvatar(profile.avatar, profile.handle)
     const users = { ...base.users, ...saved.users }
     users.u_me = { ...users.u_me, avatar: ownAvatar(users.u_me?.avatar, profile.handle) }
-    return {
+    return retireDemo({
       ...base,
       ...saved,
       profile,
@@ -124,7 +144,7 @@ function load() {
         ...saved.posts.map((p) => (seedById.has(p.id) ? { ...p, media: seedById.get(p.id).media } : p)),
         ...POSTS.filter((p) => !seenPosts.has(p.id)).map((p) => ({ ...p, likedByMe: false })),
       ]),
-    }
+    })
   } catch {
     return initial()
   }
@@ -187,7 +207,9 @@ export const selectPlaces = memo((s) => {
     return {
       ...place,
       postCount: posts.length,
-      cover: posts[0]?.media ?? null,
+      // No Trekov photo yet: the place's credited reference photo stands in
+      // until someone posts a live one.
+      cover: posts[0]?.media ?? (place.photo ? { type: 'image', src: place.photo.thumb, reference: true } : null),
       latestAt: posts[0]?.createdAt ?? null,
       saved: s.savedPlaces.includes(place.id),
     }
