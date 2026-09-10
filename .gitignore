@@ -5,3 +5,11 @@ dist
 .claude/
 
 .env*.local
+
+# Native build output (the projects themselves are committed)
+dist-native
+android/app/build
+android/build
+android/.gradle
+ios/App/Pods
+ios/App/build

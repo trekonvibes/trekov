@@ -7,9 +7,17 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "./deploy.sh"
+    "deploy": "./deploy.sh",
+    "build:native": "vite build && node scripts/build-native.mjs",
+    "sync": "npm run build:native && cap sync",
+    "android": "./scripts/android.sh",
+    "ios": "npm run build:native && cap sync ios && cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1",
     "@supabase/supabase-js": "^2.116.0",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
