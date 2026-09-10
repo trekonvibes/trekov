@@ -25,6 +25,8 @@ function useLegs(stops) {
   const pts = stops.map((s) => ({ lat: s.place.lat, lng: s.place.lng }))
   const key = mode + '|' + pts.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(';')
   const [legs, setLegs] = useState(() => legCache.get(key) ?? null)
+  // Where two-wheeler routing isn't available the car route stands in; say so.
+  const [fellBack, setFellBack] = useState(false)
   useEffect(() => {
     if (pts.length < 2) { setLegs(null); return }
     if (legCache.has(key)) { setLegs(legCache.get(key)); return }
@@ -37,13 +39,13 @@ function useLegs(stops) {
       .then((r) => {
         const road = r?.legs?.length === pts.length - 1 ? r.legs.map((l) => ({ distance: l.distance, duration: l.duration })) : null
         if (road) legCache.set(key, road)
-        if (live && road) setLegs(road)
+        if (live && road) { setLegs(road); setFellBack(Boolean(r.modeFallback)) }
       })
       .catch(() => {})
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
-  return { legs, mode }
+  return { legs, mode: fellBack ? 'car' : mode }
 }
 
 const MSG = {

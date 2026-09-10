@@ -100,7 +100,7 @@ export default function Profile({ onPost, onAuth }) {
         ) : (
           <button onClick={() => setConfirmReset(true)}
                   className="text-xs text-mist underline underline-offset-4 hover:text-rose">
-            Reset demo data
+            Clear data on this device
           </button>
         )}
       </div>
