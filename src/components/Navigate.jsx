@@ -5,7 +5,10 @@ import {
 import { arrivalAt } from '../lib/format'
 import { getRoute, getTripRoute, instruction } from '../lib/route'
 import { colourFor, joinParty } from '../lib/party'
-import { downloadTiles, tilesForRoute } from '../lib/offline'
+import {
+  DETAIL, downloadTiles, formatBytes, keepTiles, planRouteDownload, rememberSavedZoom, savedMaxZoom,
+  storageRoom,
+} from '../lib/offline'
 import { createMap } from '../lib/mapDrivers'
 import { COLOURS, vehicleSvg } from '../lib/vehicleArt'
 import { getPlace, selectSharing, useStore } from '../lib/store'
@@ -56,6 +59,9 @@ export default function Navigate({ place, trip, me, onClose }) {
   const [online, setOnline] = useState(navigator.onLine)
   const [members, setMembers] = useState([])
   const [saving, setSaving] = useState(null)
+  // The two download sizes, worked out before anything is fetched.
+  const [offlinePlan, setOfflinePlan] = useState(null)
+  const downloadAbort = useRef(null)
   const [follow, setFollow] = useState(true)
   const [heading, setHeading] = useState(null)
   const [moving, setMoving] = useState(false)
@@ -175,9 +181,21 @@ export default function Navigate({ place, trip, me, onClose }) {
   useEffect(() => {
     let alive = true
     let offDrag = () => {}
-    createMap(host.current, { center: [dest.lat, dest.lng], zoom: 9, mapType }).then((d) => {
+    // Losing signal rebuilds the map on the offline engine, and getting it
+    // back rebuilds it on Google. Either way the new map opens on the rider at
+    // street zoom — reopening on the destination at country zoom mid-ride
+    // would throw away exactly the view someone was navigating by.
+    const here = lastPos.current
+    createMap(host.current, {
+      center: here ? [here.lat, here.lng] : [dest.lat, dest.lng],
+      zoom: here ? NAV_ZOOM : 9,
+      mapType,
+      offline: !online,
+      nativeZoomCap: online ? null : savedMaxZoom(),
+    }).then((d) => {
       if (!alive) { d.destroy(); return }
       drv.current = d
+      if (here) resetZoom.current = true
       // Only when this is a lone destination. On a trip it is stop 1 and is
       // drawn with the rest of the numbered sequence below — drawing both put
       // an unnumbered circle where the "1" should have been.
@@ -199,8 +217,10 @@ export default function Navigate({ place, trip, me, onClose }) {
       setEngine(null)
     }
     // mapType is read once at creation; later changes go through setMapType.
+    // `online` is here on purpose: a Google map that has lost its network
+    // stays on screen and fetches nothing, so the engine has to change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dest])
+  }, [dest, online])
 
   // Numbered markers for the other stops on a multi-stop trip.
   useEffect(() => {
@@ -413,16 +433,51 @@ export default function Navigate({ place, trip, me, onClose }) {
     setMapType(types[(i + 1) % types.length].id)
   }
 
-  async function saveOffline() {
-    const urls = tilesForRoute(route?.coordinates?.length ? route.coordinates : [[dest.lat, dest.lng]])
-    setSaving({ done: 0, total: urls.length })
+  /** Cost out both detail levels for this route before fetching anything. */
+  async function planOffline() {
+    if (!route?.coordinates?.length) return
+    const { free } = await storageRoom()
+    setOfflinePlan({
+      standard: planRouteDownload(route.coordinates, DETAIL.standard.maxZoom),
+      detailed: planRouteDownload(route.coordinates, DETAIL.detailed.maxZoom),
+      free,
+    })
+  }
+
+  async function saveOffline(level) {
+    const plan = offlinePlan?.[level]
+    if (!plan) return
+    setOfflinePlan(null)
+    // Ask the browser not to evict these under storage pressure — otherwise a
+    // phone low on space can clear the map before the signal ever drops.
+    await keepTiles()
+    const ctrl = new AbortController()
+    downloadAbort.current = ctrl
+    setSaving({ done: 0, total: plan.urls.length })
     try {
-      const { failed } = await downloadTiles(urls, (done, total) => setSaving({ done, total }))
-      setSaving({ done: urls.length, total: urls.length, finished: true, failed })
+      const res = await downloadTiles(
+        plan.urls,
+        (done, total, failed) => setSaving({ done, total, failed }),
+        { signal: ctrl.signal },
+      )
+      // Only a finished download sets the zoom the offline map may rely on.
+      if (!res.cancelled) rememberSavedZoom(plan.maxZoom)
+      setSaving({
+        total: plan.urls.length, done: res.done ?? plan.urls.length, failed: res.failed,
+        finished: !res.cancelled, cancelled: Boolean(res.cancelled),
+      })
     } catch (e) {
       setSaving({ error: e.message })
+    } finally {
+      downloadAbort.current = null
     }
   }
+
+  // Leaving the screen stops the download rather than orphaning it with no
+  // progress and no way to cancel. Tiles already saved are kept.
+  useEffect(() => () => downloadAbort.current?.abort(), [])
+
+  const downloading = Boolean(saving && !saving.finished && !saving.cancelled && !saving.error)
 
   const mapTypeLabel = drv.current?.mapTypes().find((t) => t.id === mapType)?.label ?? 'Map'
   const CurrentVehicle = (VEHICLES.find((v) => v.id === vehicle) ?? VEHICLES[0]).Icon
@@ -686,19 +741,64 @@ export default function Navigate({ place, trip, me, onClose }) {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <button onClick={saveOffline} disabled={!!saving && !saving.finished && !saving.error}
-                          className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-xs font-semibold
-                                     hover:border-brand hover:text-brand disabled:opacity-50">
-                    <Logo size={13} /> Save map offline
-                  </button>
-                  {saving && !saving.error && (
-                    <span className="text-[11px] text-mist tabular-nums">
-                      {saving.finished ? `Saved${saving.failed ? ` · ${saving.failed} failed` : ''}` : `${saving.done}/${saving.total}`}
-                    </span>
-                  )}
-                  {saving?.error && <span className="text-[11px] text-rose">{saving.error}</span>}
-                </div>
+                {offlinePlan ? (
+                  <div className="rounded-2xl border border-line bg-surface p-3">
+                    <p className="text-xs font-semibold">Save this route for offline</p>
+                    <p className="text-[11px] text-mist mb-2.5 leading-snug mt-0.5">
+                      The whole corridor, from the country view down to the turnings.
+                      {offlinePlan.free != null && ` ${formatBytes(offlinePlan.free)} free on this device.`}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(DETAIL).map(([id, d]) => {
+                        const p = offlinePlan[id]
+                        const tooBig = offlinePlan.free != null && p.bytes > offlinePlan.free
+                        return (
+                          <button key={id} onClick={() => saveOffline(id)} disabled={tooBig}
+                                  className="rounded-xl border border-line p-2.5 text-left hover:border-brand
+                                             disabled:opacity-40 disabled:hover:border-line">
+                            <span className="block text-sm font-semibold">{d.label}</span>
+                            <span className="block text-[11px] text-mist">{d.blurb}</span>
+                            <span className="block text-xs font-semibold text-brand mt-1 tabular-nums">
+                              ~{formatBytes(p.bytes)}
+                            </span>
+                            {tooBig && <span className="block text-[10px] text-rose">Not enough space</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <button onClick={() => setOfflinePlan(null)} className="text-[11px] text-mist mt-2 hover:text-white">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={planOffline} disabled={downloading || !route?.coordinates?.length}
+                            className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-xs font-semibold
+                                       hover:border-brand hover:text-brand disabled:opacity-50">
+                      <Logo size={13} /> Save map offline
+                    </button>
+                    {downloading && (
+                      <>
+                        <span className="text-[11px] text-mist tabular-nums">
+                          {Math.round((saving.done / saving.total) * 100)}% · {saving.done}/{saving.total}
+                        </span>
+                        <button onClick={() => downloadAbort.current?.abort()}
+                                className="text-[11px] text-rose font-semibold">
+                          Stop
+                        </button>
+                      </>
+                    )}
+                    {saving?.finished && (
+                      <span className="text-[11px] text-brand">
+                        Saved for offline{saving.failed ? ` · ${saving.failed} tiles missed` : ''}
+                      </span>
+                    )}
+                    {saving?.cancelled && (
+                      <span className="text-[11px] text-mist">Stopped — what downloaded is kept</span>
+                    )}
+                    {saving?.error && <span className="text-[11px] text-rose">{saving.error}</span>}
+                  </div>
+                )}
               </div>
             )}
           </div>

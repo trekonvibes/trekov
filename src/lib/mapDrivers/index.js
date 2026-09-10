@@ -24,6 +24,10 @@ export async function createMap(host, opts) {
 
   let driver
   try {
+    // Once the Google script has loaded it stays loaded, so losing signal does
+    // not make loadGoogleMaps fail — it hands back a map that cannot fetch a
+    // single tile. Offline has to be asked for explicitly.
+    if (opts.offline) throw new Error('offline requested')
     const gm = await loadGoogleMaps()
     driver = createGoogleMap(gm, el, { mapType: preferredMapType(), ...opts })
   } catch (e) {

@@ -9,6 +9,12 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/',
+  // Build output and the native projects are not source. Watching them meant
+  // every `npm run android` or deploy rewrote an index.html the dev server
+  // could see, and it answered by reloading whatever page was open.
+  server: {
+    watch: { ignored: ['**/dist/**', '**/dist-native/**', '**/android/**', '**/ios/**'] },
+  },
   build: {
     rollupOptions: {
       input: {

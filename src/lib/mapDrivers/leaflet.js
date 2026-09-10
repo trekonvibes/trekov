@@ -5,10 +5,15 @@ import L from 'leaflet'
 const IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 const LABELS  = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
 
-export function createLeafletMap(el, { center, zoom, labels = true, zoomControl = false }) {
+export function createLeafletMap(el, { center, zoom, labels = true, zoomControl = false, nativeZoomCap = null }) {
   const map = L.map(el, { zoomControl: false, attributionControl: true }).setView(center, zoom)
-  L.tileLayer(IMAGERY, { attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics', maxZoom: 18 }).addTo(map)
-  if (labels) L.tileLayer(LABELS, { maxZoom: 18, pane: 'shadowPane' }).addTo(map)
+  // Offline, the deepest tiles on the phone are whatever was downloaded —
+  // zoom 14 or 15 — while navigation sits at 17. maxNativeZoom has Leaflet
+  // stretch the deepest saved tile rather than request one that is not there,
+  // so the map goes soft at street level instead of going blank.
+  const native = nativeZoomCap ? { maxNativeZoom: nativeZoomCap } : {}
+  L.tileLayer(IMAGERY, { attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics', maxZoom: 18, ...native }).addTo(map)
+  if (labels) L.tileLayer(LABELS, { maxZoom: 18, pane: 'shadowPane', ...native }).addTo(map)
   if (zoomControl) L.control.zoom({ position: 'bottomright' }).addTo(map)
   // The container has no final size until the pane lays out; but a map that
   // was destroyed before this fires must not be touched.
