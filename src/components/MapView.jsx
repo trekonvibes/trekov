@@ -6,7 +6,7 @@ import {
 import { createMap, preferredMapType, rememberMapType, useMapsRefused } from '../lib/mapDrivers'
 import { adoptHit } from '../lib/adopt'
 import { searchAnywhere } from '../lib/geocode'
-import { CloseIcon, PlusIcon, SaveIcon, SearchIcon, Wordmark } from './Icons'
+import { CloseIcon, NavIcon, PlusIcon, RouteIcon, SaveIcon, SearchIcon, Wordmark } from './Icons'
 
 const INDIA = [22.6, 79.0]
 
@@ -49,7 +49,7 @@ function markerHtml(node) {
   return `<div class="tk-cluster"><b>${places.length}</b><span>${total} photo${total === 1 ? '' : 's'}</span></div>`
 }
 
-export default function MapView({ onOpenPlace, onNewPlace }) {
+export default function MapView({ onOpenPlace, onNewPlace, onGoLive, onOpenTrip, onStartGroup }) {
   const mapsRefused = useMapsRefused()
   const host = useRef(null)
   const drv = useRef(null)
@@ -323,18 +323,83 @@ export default function MapView({ onOpenPlace, onNewPlace }) {
         </div>
       )}
 
+      {/* Live group trips are the heart of Trekov, so one is always a tap away. */}
+      {!q && !pending && (
+        <GroupTripCard
+          trip={trips.find((t) => t.kind === 'group' && t.stops.length) ?? trips.find((t) => t.kind === 'group')}
+          onGoLive={onGoLive} onOpenTrip={onOpenTrip} onStartGroup={onStartGroup} />
+      )}
+
       {toast && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-28 z-[700] rounded-full bg-white text-ink
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-40 z-[700] rounded-full bg-white text-ink
                         text-sm font-medium px-4 py-2 shadow-lg pointer-events-none">
           {toast}
         </div>
       )}
 
       {zoom < 6 && !q && !pending && (
-        <p className="absolute inset-x-0 bottom-4 z-[500] text-center text-xs text-mist pointer-events-none">
+        <p className="absolute inset-x-0 bottom-36 z-[500] text-center text-xs text-mist pointer-events-none [text-shadow:0_1px_6px_rgba(0,0,0,.9)]">
           Zoom in to split clusters into places
         </p>
       )}
+    </div>
+  )
+}
+
+function GroupTripCard({ trip, onGoLive, onOpenTrip, onStartGroup }) {
+  const shell = 'absolute inset-x-3 bottom-4 z-[600] rounded-2xl border border-brand/40 bg-ink/95 backdrop-blur-xl shadow-xl p-3.5 rise'
+  if (!trip) {
+    return (
+      <div className={shell}>
+        <div className="flex items-start gap-3">
+          <span className="grid place-items-center size-10 rounded-xl bg-brand/15 text-brand shrink-0"><RouteIcon size={20} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Ride together, live</p>
+            <p className="text-xs text-mist leading-snug mt-0.5">
+              Start a group trip: everyone on one map, live locations and push-to-talk voice on the road.
+            </p>
+          </div>
+        </div>
+        <button onClick={onStartGroup} className="mt-3 w-full rounded-full bg-brand text-ink py-2.5 text-sm font-semibold">
+          Start a group trip
+        </button>
+      </div>
+    )
+  }
+  const riders = trip.members?.length ?? 0
+  return (
+    <div className={shell}>
+      <div className="flex items-center gap-3">
+        <span className="relative grid place-items-center size-10 rounded-xl bg-brand/15 text-brand shrink-0">
+          <RouteIcon size={20} />
+          <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-brand animate-pulse" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand">Group trip</p>
+          <p className="text-sm font-semibold truncate">{trip.title}</p>
+          <p className="text-xs text-mist">
+            {trip.stops.length} stop{trip.stops.length === 1 ? '' : 's'}
+            {riders > 0 ? ` · ${riders} rider${riders === 1 ? '' : 's'}` : ' · invite your crew'}
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button onClick={() => onOpenTrip?.(trip.id)}
+                className="flex-1 rounded-full border border-line py-2 text-xs font-semibold hover:border-brand hover:text-brand">
+          Open trip
+        </button>
+        {trip.stops.length > 0 ? (
+          <button onClick={() => onGoLive?.(trip)}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-brand text-ink py-2 text-xs font-semibold">
+            <NavIcon size={14} filled /> Go live
+          </button>
+        ) : (
+          <button onClick={() => onOpenTrip?.(trip.id)}
+                  className="flex-1 rounded-full bg-brand/20 text-brand py-2 text-xs font-semibold">
+            Add a stop to go live
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -56,6 +56,7 @@ async function pullAll(userId) {
       id: p.id, placeId: p.place_id, authorId: p.author_id,
       media: { type: 'image', src: photoUrl(p.photo_path), path: p.photo_path },
       caption: p.caption, tags: p.tags ?? [],
+      located: p.located_at ? { at: p.located_at, distanceM: p.located_distance_m, accuracyM: p.located_accuracy_m } : null,
       likes: likesByPost[p.id]?.length ?? 0,
       likedByMe: Boolean(likesByPost[p.id]?.includes(userId)),
       comments: (commentsByPost[p.id] ?? []).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
@@ -114,6 +115,9 @@ async function pushMine(userId) {
     const { error } = await supabase.from('posts').upsert({
       id: post.id, place_id: post.placeId, author_id: userId, photo_path: path,
       caption: post.caption ?? '', tags: post.tags ?? [], created_at: post.createdAt,
+      located_at: post.located?.at ?? null,
+      located_distance_m: post.located?.distanceM ?? null,
+      located_accuracy_m: post.located?.accuracyM ?? null,
     })
     if (error) throw error
   }

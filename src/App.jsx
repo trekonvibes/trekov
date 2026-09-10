@@ -38,6 +38,8 @@ export default function App() {
   const [tab, setTab] = useState(readHash)
   const [composing, setComposing] = useState(false)
   const [authMode, setAuthMode] = useState(INITIAL_AUTH)
+  // Bumped to open Trips on the new-group-trip form.
+  const [newGroup, setNewGroup] = useState(0)
   const [place, setPlace] = useState(null)
   const [openTrip, setOpenTrip] = useState(null)
   // { placeId, tripId? } while navigating.
@@ -142,9 +144,12 @@ export default function App() {
   }
 
   const screens = {
-    map: <MapView onOpenPlace={setPlace} onNewPlace={(place) => place && announcePlace(place, meId)} />,
+    map: <MapView onOpenPlace={setPlace} onNewPlace={(place) => place && announcePlace(place, meId)}
+                  onGoLive={(trip) => trip.stops[0] && startNavigation(trip.stops[0].placeId, trip.id)}
+                  onOpenTrip={(id) => { setOpenTrip(id); go('trips') }}
+                  onStartGroup={() => { setOpenTrip(null); go('trips'); setNewGroup((n) => n + 1) }} />,
     discover: <Discover onOpenPlace={setPlace} onNavigate={startNavigation} />,
-    trips: <Trips onOpenPlace={setPlace} open={openTrip} onOpen={setOpenTrip} onNavigate={startNavigation} />,
+    trips: <Trips onOpenPlace={setPlace} open={openTrip} onOpen={setOpenTrip} onNavigate={startNavigation} newGroup={newGroup} />,
     profile: <Profile onPost={() => setComposing(true)} onAuth={setAuthMode} />,
   }
 

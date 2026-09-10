@@ -500,7 +500,7 @@ export const removeBooking = (tripId, bookingId) =>
  * ones stay, credited, in the list beneath it — so the banner is something to
  * win rather than something that destroys what came before.
  */
-export async function createPost({ file, placeId, caption, tags }) {
+export async function createPost({ file, placeId, caption, tags, located = null }) {
   const id = newId('p')
   await putBlob(id, file)
   set({
@@ -509,6 +509,8 @@ export async function createPost({ file, placeId, caption, tags }) {
       id, placeId, authorId: ME, createdAt: new Date().toISOString(),
       media: { type: file.type.startsWith('video') ? 'video' : 'image', src: '', blobKey: id },
       caption, tags, likes: 0, likedByMe: false, comments: [],
+      // { at, distanceM, accuracyM } — proof it was taken at the place
+      located,
     }, ...state.posts],
   })
   return id

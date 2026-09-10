@@ -213,6 +213,7 @@ export default function PlaceSheet({ placeId, onClose, onNavigate }) {
                       <p className="text-sm font-semibold truncate leading-tight">@{getUser(post.authorId).handle}</p>
                       <p className="text-xs text-mist truncate">
                         {formatDateTime(post.createdAt)} · {ago(post.createdAt)}
+                        {post.located && <span className="text-brand"> · On location</span>}
                       </p>
                     </div>
                     <span className="flex items-center gap-1 text-xs text-mist shrink-0">

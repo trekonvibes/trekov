@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createTrip, getPlace, selectSavedPlaces, selectTrips, toggleSavePlace, useStore } from '../lib/store'
 import { CalendarIcon, CloseIcon, Logo, NavIcon, PlusIcon } from './Icons'
 import Media from './Media'
@@ -7,12 +7,16 @@ import TripDetail from './TripDetail'
 const dateRange = (t) =>
   t.start && t.end ? `${t.start} → ${t.end}` : t.start || t.end || 'No dates yet'
 
-export default function Trips({ onOpenPlace, open, onOpen, onNavigate }) {
+export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup = 0 }) {
   const trips = useStore(selectTrips)
   const saved = useStore(selectSavedPlaces)
   const [title, setTitle] = useState('')
   const [adding, setAdding] = useState(false)
-  const [kind, setKind] = useState('solo')
+  // Group trips are what Trekov is for, so a new trip starts as one.
+  const [kind, setKind] = useState('group')
+  // The map's "Start a group trip" lands here with the form open.
+  useEffect(() => { if (newGroup) { setAdding(true); setKind('group') } }, [newGroup])
+  const ordered = [...trips].sort((a, b) => (b.kind === 'group') - (a.kind === 'group'))
 
   if (open) {
     const trip = trips.find((t) => t.id === open)
@@ -62,6 +66,21 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate }) {
             </button>
           </div>
         </form>
+      )}
+
+      {!adding && !trips.some((t) => t.kind === 'group') && (
+        <section className="mx-4 mt-4 rounded-2xl border border-brand/40 bg-brand/10 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand">Group trips</p>
+          <h2 className="text-lg font-semibold mt-1">Ride together, live</h2>
+          <p className="text-sm text-mist leading-relaxed mt-1">
+            Invite your crew, then see everyone on one map while you travel — live locations and
+            push-to-talk voice, with the route and stops shared.
+          </p>
+          <button onClick={() => { setKind('group'); setAdding(true) }}
+                  className="mt-3 rounded-full bg-brand text-ink font-semibold text-sm px-5 py-2.5">
+            Start a group trip
+          </button>
+        </section>
       )}
 
       {/* To Visit lives here: the shortlist and the trips built from it. */}
@@ -115,7 +134,7 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate }) {
         </div>
       ) : (
         <ul className="p-4 space-y-3">
-          {trips.map((t) => {
+          {ordered.map((t) => {
             const covers = t.stops.slice(0, 3).map((s) => getPlace(s.placeId)).filter(Boolean)
             return (
               <li key={t.id}>
@@ -145,6 +164,12 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate }) {
                     </p>
                   )}
                 </button>
+                {t.kind === 'group' && t.stops.length > 0 && (
+                  <button onClick={() => onNavigate?.(t.stops[0].placeId, t.id)}
+                          className="mt-2 w-full flex items-center justify-center gap-2 rounded-full bg-brand text-ink py-2 text-xs font-semibold">
+                    <span className="size-2 rounded-full bg-ink animate-pulse" aria-hidden /> Go live with the group
+                  </button>
+                )}
               </li>
             )
           })}

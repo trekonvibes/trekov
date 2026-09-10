@@ -67,6 +67,10 @@ create table if not exists posts (
   created_at timestamptz not null default now()
 );
 create index if not exists posts_place_created_idx on posts (place_id, created_at desc);
+-- Location proof (see post-location.sql): when, how far from the place, how accurate.
+alter table posts add column if not exists located_at         timestamptz;
+alter table posts add column if not exists located_distance_m integer;
+alter table posts add column if not exists located_accuracy_m integer;
 
 -- The newest photo at a place holds its banner.
 create or replace view place_banners as
