@@ -116,6 +116,10 @@ ROAD_POINTS = {"Pangong Tso": (33.93, 78.44)}
 for c in chosen:
     if c["name"] in ROAD_POINTS: c["lat"], c["lng"] = ROAD_POINTS[c["name"]]
 
+# Restricted or unreachable (Siachen, on the LoC): routes there go via Pakistan.
+EXCLUDE_NAMES = {"Sia La", "Saltoro Kangri", "Indira Col", "Siachen Glacier"}
+chosen = [c for c in chosen if c["name"] not in EXCLUDE_NAMES]
+
 out = []
 for c in chosen:
     m = meta.get(c["image"]) or meta.get(c["image"].replace("_"," "))

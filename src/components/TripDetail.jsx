@@ -1,14 +1,49 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   deleteTrip, getPlace, moveStop, removeStop, setStopNote, updateTrip, useStore,
 } from '../lib/store'
 import { encodeTrip, shareLink } from '../lib/share'
 import { mapsUrl } from '../lib/format'
+import { distance as straightLine, formatDistance, formatDuration } from '../lib/geo'
+import { getTripRoute } from '../lib/route'
 import { BackIcon, CalendarIcon, CloseIcon, PlusIcon, SendIcon } from './Icons'
 import AddStop from './AddStop'
 import Bookings from './Bookings'
 import TripSuggestions from './TripSuggestions'
 import Invite from './Invite'
+
+// Road distance and time between consecutive stops, for the vehicle chosen
+// last in navigation (bikes route as two-wheelers). Kept for the session so
+// reopening a trip doesn't pay for another routing call.
+const legCache = new Map()
+const lastVehicle = () => { try { return localStorage.getItem('trekov.vehicle') || 'car' } catch { return 'car' } }
+const routeMode = (v) => (/bike|classic|cruiser|commuter|scooter/.test(v) ? 'bike' : 'car')
+
+function useLegs(stops) {
+  const mode = routeMode(lastVehicle())
+  const pts = stops.map((s) => ({ lat: s.place.lat, lng: s.place.lng }))
+  const key = mode + '|' + pts.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(';')
+  const [legs, setLegs] = useState(() => legCache.get(key) ?? null)
+  useEffect(() => {
+    if (pts.length < 2) { setLegs(null); return }
+    if (legCache.has(key)) { setLegs(legCache.get(key)); return }
+    // Straight-line first, so there is always something to show; replaced by
+    // the road route when it arrives.
+    const rough = pts.slice(1).map((p, i) => ({ distance: straightLine(pts[i], p), duration: null, rough: true }))
+    setLegs(rough)
+    let live = true
+    getTripRoute(pts[0], pts.slice(1), mode)
+      .then((r) => {
+        const road = r?.legs?.length === pts.length - 1 ? r.legs.map((l) => ({ distance: l.distance, duration: l.duration })) : null
+        if (road) legCache.set(key, road)
+        if (live && road) setLegs(road)
+      })
+      .catch(() => {})
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return { legs, mode }
+}
 
 const MSG = {
   shared: 'Shared.',
@@ -25,6 +60,9 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
   const [link, setLink] = useState('')
 
   const stops = trip.stops.map((s) => ({ ...s, place: getPlace(s.placeId) })).filter((s) => s.place)
+  const { legs, mode } = useLegs(stops)
+  const total = legs?.reduce((n, l) => n + l.distance, 0)
+  const totalTime = legs?.every((l) => l.duration != null) ? legs.reduce((n, l) => n + l.duration, 0) : null
 
   async function share() {
     const url = encodeTrip(trip, places)
@@ -82,6 +120,11 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
         <div className="flex items-center justify-between pt-2">
           <h2 className="text-xs uppercase tracking-[0.14em] text-mist">
             Itinerary{stops.length > 0 && ` · ${stops.length}`}
+            {total > 0 && (
+              <span className="normal-case tracking-normal text-mist">
+                {' '}· {legs.some((l) => l.rough) ? '~' : ''}{formatDistance(total)}{totalTime ? ` · ${formatDuration(totalTime)}` : ''}
+              </span>
+            )}
           </h2>
           <button onClick={() => setAddingStop((v) => !v)}
                   className="flex items-center gap-1 text-xs font-semibold text-brand">
@@ -101,7 +144,16 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
         ) : stops.length === 0 ? null : (
           <ol className="space-y-3">
             {stops.map((s, i) => (
-              <li key={s.placeId} className="bg-surface border border-line rounded-2xl p-3">
+              <li key={s.placeId}>
+                {i > 0 && legs?.[i - 1] && (
+                  <p className="flex items-center gap-2 pl-3 -mt-1 mb-2 text-xs text-mist tabular-nums">
+                    <span className="text-brand">↓</span>
+                    {legs[i - 1].rough
+                      ? `~${formatDistance(legs[i - 1].distance)} straight line`
+                      : `${formatDistance(legs[i - 1].distance)} · ${formatDuration(legs[i - 1].duration)} by ${mode}`}
+                  </p>
+                )}
+              <div className="bg-surface border border-line rounded-2xl p-3">
                 <div className="flex items-start gap-3">
                   <span className="grid place-items-center size-7 rounded-full bg-brand/15 text-brand
                                    text-xs font-bold shrink-0 tabular-nums">{i + 1}</span>
@@ -140,6 +192,7 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
                   <a href={mapsUrl(s.place)} target="_blank" rel="noreferrer"
                      className="text-xs text-mist">Maps</a>
                 </div>
+              </div>
               </li>
             ))}
           </ol>

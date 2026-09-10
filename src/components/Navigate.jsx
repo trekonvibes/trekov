@@ -264,8 +264,9 @@ export default function Navigate({ place, trip, me, onClose }) {
     // Only the slow stretches are drawn over the base line — clear road is
     // already the route's own colour.
     const lines = [
-      d.polyline(route.coordinates, { color: '#06120D', weight: 11, opacity: .55, back: true }),
-      d.polyline(route.coordinates, { color: '#00C08B', weight: 6, opacity: .95 }),
+      // Google-style: a blue route with a darker casing, traffic painted on top.
+      d.polyline(route.coordinates, { color: '#1A4FA8', weight: 11, opacity: .9, back: true }),
+      d.polyline(route.coordinates, { color: '#4285F4', weight: 7, opacity: 1 }),
     ]
 
     if (trafficShown) {
@@ -273,8 +274,8 @@ export default function Navigate({ place, trip, me, onClose }) {
         const part = route.coordinates.slice(jam.start, jam.end + 1)
         if (part.length < 2) continue
         lines.push(d.polyline(part, {
-          color: jam.speed === 'TRAFFIC_JAM' ? '#FF3B4E' : '#FFB33E',
-          weight: 6,
+          color: jam.speed === 'TRAFFIC_JAM' ? '#D93025' : '#F29900',
+          weight: 7,
           opacity: 1,
         }))
       }
@@ -624,17 +625,37 @@ export default function Navigate({ place, trip, me, onClose }) {
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block text-xl font-semibold tabular-nums leading-none">
-                  {remaining != null ? formatDistance(remaining) : '—'}
+                {/* Remaining, travelled and the whole route side by side, so the
+                    progress reads at a glance without opening the panel. */}
+                <span className="flex items-end gap-3 tabular-nums">
+                  <span className="shrink-0">
+                    <span className="block text-xl font-semibold leading-none">
+                      {remaining != null ? formatDistance(remaining) : '—'}
+                    </span>
+                    <span className="block text-[9px] uppercase tracking-[0.1em] text-mist mt-1">Remaining</span>
+                  </span>
+                  {route && (
+                    <>
+                      <span className="shrink-0 border-l border-line pl-3">
+                        <span className="block text-sm font-semibold leading-none">
+                          {travelled != null ? formatDistance(travelled) : '—'}
+                        </span>
+                        <span className="block text-[9px] uppercase tracking-[0.1em] text-mist mt-1">Travelled</span>
+                      </span>
+                      <span className="shrink-0 border-l border-line pl-3">
+                        <span className="block text-sm font-semibold leading-none">{formatDistance(route.distance)}</span>
+                        <span className="block text-[9px] uppercase tracking-[0.1em] text-mist mt-1">Total</span>
+                      </span>
+                    </>
+                  )}
                 </span>
-                <span className="block text-[11px] text-mist truncate mt-0.5">
+                <span className="block text-[11px] text-mist truncate mt-1">
                   {routeState === 'loading' && 'Finding a route…'}
                   {routeState === 'none' && 'Straight-line direction only'}
                   {routeState === 'idle' && 'Waiting for your location…'}
                   {routeState === 'ready' && route && (
                     <>
                       {eta}{route.durationInTraffic ? ' in traffic' : ''} left
-                      {travelled != null && ` · ${formatDistance(travelled)} done`}
                       {route.stale ? ' · cached' : ''}
                       {members.length > 0 && ` · ${members.length} with you`}
                     </>
@@ -712,20 +733,6 @@ export default function Navigate({ place, trip, me, onClose }) {
                         )
                       })}
                     </ol>
-                  </div>
-                )}
-                {route && (
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    {[
-                      ['Travelled', travelled != null ? formatDistance(travelled) : '—'],
-                      ['Remaining', remaining != null ? formatDistance(remaining) : '—'],
-                      ['Total route', formatDistance(route.distance)],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-xl border border-line py-1.5">
-                        <p className="text-sm font-semibold tabular-nums leading-none">{value}</p>
-                        <p className="text-[10px] uppercase tracking-[0.1em] text-mist mt-1">{label}</p>
-                      </div>
-                    ))}
                   </div>
                 )}
                 <p className="text-[11px] text-mist tabular-nums">{formatDistance(straight)} straight-line</p>

@@ -25,7 +25,7 @@ BOLD, DEMI, MED = face("Bold"), face("Demi Bold"), face("Medium")
 CAPTIONS = [
     ("c1", "Ride together.", "Live."),
     ("c2", "Live group trip", "Everyone on one map"),
-    ("c3", "Push-to-talk voice", "Talk while you ride"),
+    ("c3", "Voice & one-tap alerts", "Stop · Wait · Let's go"),
     ("c4", "Plan in seconds", "Stops, route & tolls"),
     ("c5", "Invite by @username", "Or just send the link"),
     ("c6", "Live photos.", "GPS verified."),
