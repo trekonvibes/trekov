@@ -359,20 +359,22 @@
   </div>
 </section>
 
-<section id="early">
+<section id="join">
   <div class="wrap">
-    <p class="kicker">Early access</p>
-    <h2>Trekov is being built in the open.</h2>
+    <p class="kicker">Sign up</p>
+    <h2>Your map, on every device.</h2>
     <p class="sub">
-      Leave an email and you'll get the first real build — accounts, your own photos on
-      the map, and trips that sync between devices.
+      Enter your email and we'll send a one-time link — no password to set. Your trips,
+      saved places and photos then sync between your phone and laptop, and friends you
+      invite can ride along on your trips.
     </p>
 
     <form class="signup" id="signup" novalidate>
       <input type="email" name="email" id="email" placeholder="you@email.com" autocomplete="email" required aria-label="Your email" />
-      <button class="btn btn-primary" type="submit">Get early access</button>
+      <button class="btn btn-primary" type="submit" id="signup-btn">Send sign-up link</button>
     </form>
     <p class="form-msg" id="msg" role="status"></p>
+    <p class="note">Already have an account? <a href="/app/?auth=signin#profile" style="color:var(--brand)">Sign in</a></p>
   </div>
 </section>
 
@@ -387,48 +389,6 @@
   </div>
 </footer>
 
-<script>
-  // Drop a Formspree (or similar) form ID here and the signup posts to it.
-  // Until then the form hands off to the visitor's mail client, so the button
-  // does something real on day one instead of pretending to.
-  const FORM_ENDPOINT = ''
-  const CONTACT_EMAIL = 'punit13690@gmail.com'
-
-  const form = document.getElementById('signup')
-  const msg = document.getElementById('msg')
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const email = document.getElementById('email').value.trim()
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      msg.style.color = '#FF5C7A'
-      msg.textContent = 'That email address looks incomplete.'
-      return
-    }
-    msg.style.color = 'var(--brand)'
-
-    if (!FORM_ENDPOINT) {
-      msg.textContent = 'Opening your mail app…'
-      window.location.href =
-        `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Trekov early access')}` +
-        `&body=${encodeURIComponent(`Add me to the Trekov early access list: ${email}`)}`
-      return
-    }
-
-    try {
-      const res = await fetch(FORM_ENDPOINT, {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) throw new Error(res.status)
-      form.reset()
-      msg.textContent = "You're on the list. I'll be in touch when the first build lands."
-    } catch {
-      msg.style.color = '#FF5C7A'
-      msg.textContent = `Something broke on our end. Email ${CONTACT_EMAIL} and I'll add you by hand.`
-    }
-  })
-</script>
+<script type="module" src="/src/landing.js"></script>
 </body>
 </html>
