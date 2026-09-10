@@ -11,6 +11,7 @@
 import { useSyncExternalStore } from 'react'
 import { PLACES, POSTS, SEED_REVIEWS, USERS } from './seed'
 import { putBlob, delBlob } from './media'
+import { defaultAvatar } from './avatar'
 
 const KEY = 'trekov.state.v2'
 const ME = 'u_me'
@@ -85,6 +86,11 @@ export function applyRemote(remote, userId) {
   })
 }
 
+// Early installs started everyone on a stock photo of a stranger. Anyone still
+// carrying it gets the drawn initial instead; a photo they chose is untouched.
+const STOCK_ME = /^https:\/\/i\.pravatar\.cc\/.*trekov-me/
+const ownAvatar = (avatar, handle) => (!avatar || STOCK_ME.test(avatar) ? defaultAvatar(handle || 'you') : avatar)
+
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || 'null')
@@ -103,9 +109,15 @@ function load() {
       ...savedReviews.map((r) => seedReviews.get(r.id) ?? r),
       ...SEED_REVIEWS.filter((r) => !seenReviews.has(r.id)),
     ]
+    const profile = { ...base.profile, ...saved.profile }
+    profile.avatar = ownAvatar(profile.avatar, profile.handle)
+    const users = { ...base.users, ...saved.users }
+    users.u_me = { ...users.u_me, avatar: ownAvatar(users.u_me?.avatar, profile.handle) }
     return {
       ...base,
       ...saved,
+      profile,
+      users,
       places: { ...base.places, ...saved.places },
       reviews,
       posts: ([

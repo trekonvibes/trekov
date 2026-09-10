@@ -4,11 +4,14 @@
 // the app is used: you zoom to somewhere, then look at what people shot there.
 //
 // Placeholder imagery only — swap for real photos before this goes near a user.
+import { defaultAvatar } from './avatar'
+
 const photo = (slug) => `https://picsum.photos/seed/trekov-${slug}/900/1200`
 const face = (who) => `https://i.pravatar.cc/200?u=trekov-${who}`
 
 export const USERS = {
-  u_me:    { id: 'u_me',    name: 'You',            handle: 'you',           avatar: face('me') },
+  // You start with a drawn initial, never a stranger's face.
+  u_me:    { id: 'u_me',    name: 'You',            handle: 'you',           avatar: defaultAvatar('you') },
   u_aria:  { id: 'u_aria',  name: 'Aria Nandan',    handle: 'ariaflies',     avatar: face('1') },
   u_kabir: { id: 'u_kabir', name: 'Kabir Sethi',    handle: 'kabirshoots',   avatar: face('2') },
   u_mei:   { id: 'u_mei',   name: 'Mei Lin',        handle: 'meiwanders',    avatar: face('3') },

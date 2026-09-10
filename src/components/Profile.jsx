@@ -5,7 +5,7 @@ import Account from './Account'
 import Media from './Media'
 import ProfileEditor from './ProfileEditor'
 
-export default function Profile({ onPost }) {
+export default function Profile({ onPost, onAuth }) {
   const [confirmReset, setConfirmReset] = useState(false)
   const [editing, setEditing] = useState(false)
   const profile = useStore((s) => s.profile)
@@ -41,7 +41,7 @@ export default function Profile({ onPost }) {
 
       {editing && <ProfileEditor onClose={() => setEditing(false)} />}
 
-      <Account />
+      <Account onAuth={onAuth} />
 
       <div className="grid grid-cols-3 mx-5 mt-4 rounded-2xl border border-line bg-surface divide-x divide-line">
         {stats.map(([label, value]) => (

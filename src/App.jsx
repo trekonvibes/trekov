@@ -8,6 +8,7 @@ import { currentAccount, hasSupabase, onAuthChange } from './lib/auth'
 import { setAccount } from './lib/store'
 import { stopWatching, syncNow, watchRemote } from './lib/sync'
 import { NEW_PLACE, broadcastTransport } from './lib/notify'
+import AuthScreen from './components/AuthScreen'
 import Composer from './components/Composer'
 import Discover from './components/Discover'
 import MapView from './components/MapView'
@@ -19,6 +20,15 @@ import TabBar from './components/TabBar'
 import Trips from './components/Trips'
 
 const TABS = ['map', 'discover', 'trips', 'profile']
+
+// Read before the Supabase client tidies the URL: an email link lands here
+// with the session (or the reason it failed) after the '#'.
+const arrival = new URLSearchParams(window.location.hash.slice(1))
+const CAME_FROM_LINK = arrival.has('access_token')
+const LINK_ERROR = arrival.get('error_description')?.replace(/\+/g, ' ') || ''
+// The landing page's Sign up / Sign in buttons open /app/?auth=signup|signin.
+const askedFor = new URLSearchParams(window.location.search).get('auth')
+const INITIAL_AUTH = LINK_ERROR ? 'signin' : (askedFor === 'signup' || askedFor === 'signin' ? askedFor : null)
 const readHash = () => {
   const h = window.location.hash.replace('#', '')
   return TABS.includes(h) ? h : 'map'
@@ -27,6 +37,7 @@ const readHash = () => {
 export default function App() {
   const [tab, setTab] = useState(readHash)
   const [composing, setComposing] = useState(false)
+  const [authMode, setAuthMode] = useState(INITIAL_AUTH)
   const [place, setPlace] = useState(null)
   const [openTrip, setOpenTrip] = useState(null)
   // { placeId, tripId? } while navigating.
@@ -43,6 +54,7 @@ export default function App() {
   // One identity per tab, so two tabs act as two travellers sharing a trip.
   // With a real backend this becomes the signed-in user's id.
   const account = useStore((s) => s.account)
+  useEffect(() => { if (account) setAuthMode(null) }, [account])
 
   const me = useMemo(() => {
     let id = sessionStorage.getItem('trekov.memberId')
@@ -80,7 +92,11 @@ export default function App() {
       if (!live) return
       setAccount(account)
       if (account) { syncNow(account.id); watchRemote(account.id) } else { stopWatching() }
+      // Straight from the email link: show them the account they just signed in to.
+      if (account && CAME_FROM_LINK) go('profile')
     }
+    // Drop ?auth= so a refresh doesn't reopen the sign-in screen.
+    if (askedFor) window.history.replaceState(null, '', window.location.pathname + window.location.hash)
     currentAccount().then(apply)
     const off = onAuthChange(apply)
     return () => { live = false; off(); stopWatching() }
@@ -129,7 +145,7 @@ export default function App() {
     map: <MapView onOpenPlace={setPlace} onNewPlace={(place) => place && announcePlace(place, meId)} />,
     discover: <Discover onOpenPlace={setPlace} onNavigate={startNavigation} />,
     trips: <Trips onOpenPlace={setPlace} open={openTrip} onOpen={setOpenTrip} onNavigate={startNavigation} />,
-    profile: <Profile onPost={() => setComposing(true)} />,
+    profile: <Profile onPost={() => setComposing(true)} onAuth={setAuthMode} />,
   }
 
   return (
@@ -161,6 +177,10 @@ export default function App() {
           onPosted={(placeId) => { setComposing(false); setPlace(placeId) }}
           onNewPlace={announcePlace}
         />
+      )}
+
+      {authMode && !account && (
+        <AuthScreen mode={authMode} notice={LINK_ERROR} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />
       )}
 
       {incoming && <SharedTrip trip={incoming} onAccept={acceptTrip} onDismiss={dismissTrip} />}
