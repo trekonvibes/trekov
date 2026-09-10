@@ -1,62 +1,103 @@
 import { useEffect, useRef, useState } from 'react'
-import { hasSupabase, sendMagicLink } from '../lib/auth'
+import {
+  PASSWORD_MIN, hasSupabase, isHandleAvailable, looksLikeEmail, sendMagicLink,
+  signInWithPassword, signUpWithPassword,
+} from '../lib/auth'
+import { HANDLE_HINT, normaliseHandle, validHandle } from '../lib/profile'
 import { Wordmark } from './Icons'
 
-// Sign up and sign in are one magic link underneath — Supabase creates the
-// account the first time the link is used — so the two modes differ only in
-// wording. The screen is its own page rather than a card on the profile, so
-// arriving from "Sign up" feels like signing up.
-const COPY = {
-  signup: {
-    title: 'Create your account',
-    body: "Enter your email and we'll send you a link. Tap it and you're in — there's no password to set.",
-    button: 'Send sign-up link',
-    switchText: 'Already have an account?', switchTo: 'signin', switchLabel: 'Sign in',
-  },
-  signin: {
-    title: 'Welcome back',
-    body: "Enter the email you signed up with and we'll send you a sign-in link.",
-    button: 'Send sign-in link',
-    switchText: 'New to Trekov?', switchTo: 'signup', switchLabel: 'Create an account',
-  },
+// Three ways in:
+//   signup — pick a username (the @handle people invite you by), email, password
+//   signin — username or email, plus password
+//   link   — emailed one-time link, for no password or a forgotten one
+// Passwords go straight to Supabase; nothing here stores them.
+
+const field = `w-full bg-raised rounded-xl px-4 py-3 text-base outline-none
+               placeholder:text-mist focus:ring-2 focus:ring-brand/50`
+const primary = 'w-full rounded-xl bg-brand text-ink font-semibold py-3 disabled:opacity-40'
+const linkBtn = 'font-semibold text-brand hover:underline'
+
+function PasswordInput({ value, onChange, autoComplete, placeholder }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative">
+      <input type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)}
+             autoComplete={autoComplete} placeholder={placeholder} aria-label="Password"
+             className={`${field} pr-16`} />
+      <button type="button" onClick={() => setShow((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-mist hover:text-white">
+        {show ? 'Hide' : 'Show'}
+      </button>
+    </div>
+  )
 }
 
 export default function AuthScreen({ mode, notice = '', onModeChange, onClose }) {
-  const copy = COPY[mode] ?? COPY.signin
+  const [handle, setHandle] = useState('')
+  const [handleFree, setHandleFree] = useState(null)   // null = unknown/checking
   const [email, setEmail] = useState('')
-  const [sentTo, setSentTo] = useState('')
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [sent, setSent] = useState(null)               // { kind: 'confirm' | 'link', to }
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const input = useRef(null)
+  const first = useRef(null)
 
-  useEffect(() => { if (!sentTo) input.current?.focus() }, [mode, sentTo])
+  useEffect(() => { setError(''); if (!sent) first.current?.focus() }, [mode, sent])
 
-  async function send(e) {
-    e.preventDefault()
-    const address = email.trim()
-    if (!/^\S+@\S+\.\S+$/.test(address)) return setError('That email address looks incomplete.')
+  // Check the username as it's typed, once it's a valid shape.
+  useEffect(() => {
+    setHandleFree(null)
+    if (mode !== 'signup' || !validHandle(handle)) return
+    let live = true
+    const t = setTimeout(() => isHandleAvailable(handle).then((ok) => { if (live) setHandleFree(ok) }), 350)
+    return () => { live = false; clearTimeout(t) }
+  }, [handle, mode])
+
+  const go = (m) => { setSent(null); setPassword(''); onModeChange(m) }
+
+  async function run(fn) {
     setBusy(true); setError('')
-    try {
-      await sendMagicLink(address)
-      setSentTo(address)
-    } catch (err) {
-      setError(/rate limit/i.test(err?.message ?? '')
-        ? 'Too many emails just now. Please try again in a little while.'
-        : err?.message || 'Could not send the link. Please try again.')
-    } finally {
-      setBusy(false)
-    }
+    try { await fn() } catch (err) { setError(friendly(err)) } finally { setBusy(false) }
   }
 
+  const signUp = (e) => {
+    e.preventDefault()
+    if (!validHandle(handle)) return setError(HANDLE_HINT)
+    if (handleFree === false) return setError(`@${handle} is taken — try another.`)
+    if (!looksLikeEmail(email)) return setError('That email address looks incomplete.')
+    if (password.length < PASSWORD_MIN) return setError(`Use a password of at least ${PASSWORD_MIN} characters.`)
+    run(async () => {
+      const { needsConfirmation } = await signUpWithPassword({ email, password, handle })
+      if (needsConfirmation) setSent({ kind: 'confirm', to: email.trim() })
+      // Otherwise the session arrived and the app closes this screen.
+    })
+  }
+
+  const signIn = (e) => {
+    e.preventDefault()
+    if (!identifier.trim()) return setError('Enter your username or email.')
+    if (!password) return setError('Enter your password.')
+    run(() => signInWithPassword(identifier, password))
+  }
+
+  const emailLink = (e) => {
+    e.preventDefault()
+    if (!looksLikeEmail(email)) return setError('That email address looks incomplete.')
+    run(async () => { await sendMagicLink(email); setSent({ kind: 'link', to: email.trim() }) })
+  }
+
+  const title = { signup: 'Create your account', signin: 'Welcome back', link: 'Email me a sign-in link' }[mode] ?? 'Welcome back'
+
   return (
-    <div className="fixed inset-0 z-[1500] bg-black flex justify-center" role="dialog" aria-modal="true" aria-label={copy.title}>
+    <div className="fixed inset-0 z-[1500] bg-black flex justify-center" role="dialog" aria-modal="true" aria-label={title}>
       <div className="tk-shell h-full w-full flex flex-col bg-ink sm:border-x sm:border-line">
         <header className="flex items-center justify-between px-4 h-14 border-b border-line">
           <Wordmark size={16} />
           <button onClick={onClose} aria-label="Close" className="text-mist hover:text-white p-1 text-lg leading-none">✕</button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 pt-12 pb-10 max-w-md w-full mx-auto">
+        <div className="flex-1 overflow-y-auto px-6 pt-10 pb-10 max-w-md w-full mx-auto">
           {!hasSupabase ? (
             <>
               <h1 className="text-2xl font-semibold">Accounts are off</h1>
@@ -64,44 +105,87 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
                 This build has no account server configured, so everything stays on this device.
               </p>
             </>
-          ) : sentTo ? (
+          ) : sent ? (
             <>
               <h1 className="text-2xl font-semibold">Check your inbox</h1>
               <p className="text-sm text-mist leading-relaxed mt-2">
-                We sent a link to <span className="text-white font-medium break-all">{sentTo}</span>.
-                Open it on this device and you'll be signed in. It can take a minute — check spam if it doesn't show.
+                {sent.kind === 'confirm'
+                  ? <>We sent a confirmation link to <b className="text-white break-all">{sent.to}</b>. Tap it to finish
+                      creating @{handle} — after that you can sign in with your username or email and password.</>
+                  : <>We sent a sign-in link to <b className="text-white break-all">{sent.to}</b>. Open it on this device
+                      and you'll be signed in. Once in, you can set a password from your profile.</>}
               </p>
-              <button onClick={() => { setSentTo(''); setError('') }}
-                      className="mt-6 text-sm font-semibold text-brand hover:underline">
-                Use a different email
-              </button>
+              <p className="text-xs text-mist mt-3">It can take a minute — check spam if it doesn't show.</p>
+              <button onClick={() => setSent(null)} className={`mt-6 text-sm ${linkBtn}`}>Use a different email</button>
             </>
           ) : (
             <>
               {notice && (
                 <p className="mb-6 rounded-xl border border-rose/40 bg-rose/10 px-3.5 py-2.5 text-sm text-rose">
-                  That sign-in link didn't work ({notice}). Send yourself a fresh one below.
+                  That sign-in link didn't work ({notice}). Sign in below or send yourself a fresh link.
                 </p>
               )}
-              <h1 className="text-2xl font-semibold">{copy.title}</h1>
-              <p className="text-sm text-mist leading-relaxed mt-2">{copy.body}</p>
-              <form onSubmit={send} className="mt-7 space-y-3" noValidate>
-                <input ref={input} type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                       placeholder="you@email.com" autoComplete="email" aria-label="Email"
-                       className="w-full bg-raised rounded-xl px-4 py-3 text-base outline-none
-                                  placeholder:text-mist focus:ring-2 focus:ring-brand/50" />
-                <button type="submit" disabled={busy || !email.trim()}
-                        className="w-full rounded-xl bg-brand text-ink font-semibold py-3 disabled:opacity-40">
-                  {busy ? 'Sending…' : copy.button}
-                </button>
-              </form>
+              <h1 className="text-2xl font-semibold">{title}</h1>
+
+              {mode === 'signup' && (
+                <form onSubmit={signUp} className="mt-6 space-y-3" noValidate>
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-mist">@</span>
+                      <input ref={first} value={handle} onChange={(e) => setHandle(normaliseHandle(e.target.value))}
+                             placeholder="username" autoComplete="username" aria-label="Username"
+                             autoCapitalize="none" spellCheck={false} className={`${field} pl-8`} />
+                    </div>
+                    <p className={`text-[11px] mt-1 ${handleFree === false ? 'text-rose' : handleFree ? 'text-brand' : 'text-mist'}`}>
+                      {handleFree === false ? `@${handle} is taken`
+                        : handleFree ? `@${handle} is yours — friends invite you by this`
+                        : HANDLE_HINT}
+                    </p>
+                  </div>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                         placeholder="you@email.com" autoComplete="email" aria-label="Email" className={field} />
+                  <PasswordInput value={password} onChange={setPassword} autoComplete="new-password"
+                                 placeholder={`Password (${PASSWORD_MIN}+ characters)`} />
+                  <button type="submit" disabled={busy} className={primary}>
+                    {busy ? 'Creating…' : 'Create account'}
+                  </button>
+                </form>
+              )}
+
+              {mode === 'signin' && (
+                <form onSubmit={signIn} className="mt-6 space-y-3" noValidate>
+                  <input ref={first} value={identifier} onChange={(e) => setIdentifier(e.target.value)}
+                         placeholder="Username or email" autoComplete="username" aria-label="Username or email"
+                         autoCapitalize="none" spellCheck={false} className={field} />
+                  <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" placeholder="Password" />
+                  <button type="submit" disabled={busy} className={primary}>
+                    {busy ? 'Signing in…' : 'Sign in'}
+                  </button>
+                  <button type="button" onClick={() => go('link')} className={`text-sm ${linkBtn}`}>
+                    Forgot password, or never set one? Email me a sign-in link
+                  </button>
+                </form>
+              )}
+
+              {mode === 'link' && (
+                <form onSubmit={emailLink} className="mt-6 space-y-3" noValidate>
+                  <p className="text-sm text-mist leading-relaxed">
+                    We'll email you a one-time link. After signing in you can set a new password from your profile.
+                  </p>
+                  <input ref={first} type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                         placeholder="you@email.com" autoComplete="email" aria-label="Email" className={field} />
+                  <button type="submit" disabled={busy} className={primary}>
+                    {busy ? 'Sending…' : 'Send sign-in link'}
+                  </button>
+                </form>
+              )}
+
               {error && <p className="text-sm text-rose mt-3">{error}</p>}
+
               <p className="text-sm text-mist mt-8">
-                {copy.switchText}{' '}
-                <button onClick={() => { onModeChange(copy.switchTo); setError('') }}
-                        className="font-semibold text-brand hover:underline">
-                  {copy.switchLabel}
-                </button>
+                {mode === 'signup'
+                  ? <>Already have an account? <button onClick={() => go('signin')} className={linkBtn}>Sign in</button></>
+                  : <>New to Trekov? <button onClick={() => go('signup')} className={linkBtn}>Create an account</button></>}
               </p>
             </>
           )}
@@ -109,4 +193,10 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
       </div>
     </div>
   )
+}
+
+function friendly(err) {
+  const m = err?.message ?? ''
+  if (/rate limit/i.test(m)) return 'Too many attempts just now. Please try again in a little while.'
+  return m || 'Something went wrong. Please try again.'
 }

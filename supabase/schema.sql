@@ -16,17 +16,23 @@ create table if not exists profiles (
   created_at  timestamptz not null default now()
 );
 
--- A profile row for every new account, with a handle derived from the email.
+-- New accounts keep the handle they picked at sign-up (sent as user metadata);
+-- otherwise one is derived from the email as before.
 create or replace function handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare base text; candidate text; n int := 0;
+declare base text; candidate text; n int := 0; wanted text;
 begin
-  base := regexp_replace(split_part(new.email, '@', 1), '[^a-zA-Z0-9_]', '', 'g');
-  if base = '' then base := 'traveller'; end if;
-  candidate := base;
-  while exists (select 1 from profiles where handle = candidate) loop
-    n := n + 1; candidate := base || n::text;
-  end loop;
+  wanted := lower(coalesce(new.raw_user_meta_data->>'handle', ''));
+  if wanted ~ '^[a-z0-9_]{3,20}$' and not exists (select 1 from profiles where handle = wanted) then
+    candidate := wanted;
+  else
+    base := lower(regexp_replace(split_part(new.email, '@', 1), '[^a-zA-Z0-9_]', '', 'g'));
+    if base = '' then base := 'traveller'; end if;
+    candidate := base;
+    while exists (select 1 from profiles where handle = candidate) loop
+      n := n + 1; candidate := base || n::text;
+    end loop;
+  end if;
   insert into profiles (id, handle, name) values (new.id, candidate, candidate);
   return new;
 end $$;
@@ -248,3 +254,5 @@ do $$ begin
   create policy manage_own_listing on listings for all
     using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 exception when duplicate_object then null; end $$;
+
+-- Username + password sign-in: see username-login.sql (run it after this file).
