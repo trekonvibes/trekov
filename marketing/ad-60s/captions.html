@@ -1,0 +1,48 @@
+<!-- Caption cards for the ad, in Outfit (the app's font). One card per URL hash,
+     e.g. captions.html#t05. Render all: ./render_captions.sh -> assets/text/tNN.png
+     (1080x1920, transparent except the top band). -->
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: transparent; }
+  .band { position: absolute; inset: 0 0 auto 0; height: 380px;
+          background: linear-gradient(to bottom, rgba(6,10,9,.80), rgba(6,10,9,.45) 55%, rgba(6,10,9,0)); }
+  .cap { position: absolute; top: 58px; left: 0; right: 0; text-align: center; font-family: "Outfit", sans-serif; }
+  .l1 { display: inline-block; white-space: nowrap; font-weight: 800; font-size: 96px; line-height: 1.08;
+        letter-spacing: -0.025em; color: #fff; text-shadow: 0 4px 14px rgba(0,0,0,.55); }
+  .l2 { display: inline-block; white-space: nowrap; font-weight: 600; font-size: 54px; line-height: 1.2;
+        letter-spacing: -0.005em; color: #3DDC97; text-shadow: 0 3px 12px rgba(0,0,0,.6); margin-top: 6px; }
+</style></head>
+<body>
+  <div class="band"></div>
+  <div class="cap"><div class="l1" id="l1"></div><br><div class="l2" id="l2"></div></div>
+<script>
+  const CAPS = {
+    t01: ["Ride together.", "Live."],
+    t02: ["Live group trip", "Everyone on one map"],
+    t03: ["Pick your ride", "Classic · Cruiser · SUV"],
+    t04: ["Turn-by-turn", "with live traffic"],
+    t05: ["One tap: STOP", "The whole group knows"],
+    t06: ["Push-to-talk", "Talk while you ride"],
+    t07: ["Plan in seconds", "Distance · time · tolls"],
+    t08: ["Invite by @username", "Or just send the link"],
+    t09: ["No network?", "Save the map offline"],
+    t10: ["Petrol · garages · stays", "Nearby, on the way"],
+    t11: ["Live photos only", "GPS verified"],
+    t12: ["Newest photo", "becomes the banner"],
+    t13: ["~300 places", "across India, with photos"],
+  }
+  const [a, b] = CAPS[location.hash.slice(1)] || ["?", "?"]
+  const l1 = document.getElementById("l1"), l2 = document.getElementById("l2")
+  l1.textContent = a; l2.textContent = b
+  // Long lines shrink to fit inside the frame's safe width.
+  document.fonts.ready.then(() => {
+    for (const el of [l1, l2]) {
+      const w = el.getBoundingClientRect().width
+      if (w > 980) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * 980 / w) + "px"
+    }
+    document.title = "ready"
+  })
+</script>
+</body></html>
