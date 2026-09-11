@@ -14,3 +14,7 @@ android/.gradle
 ios/App/Pods
 ios/App/build
 marketing/ad-30s/assets/
+
+# 60 s ad: generated media stays out of git
+marketing/ad-60s/assets/
+marketing/ad-60s/*.mp4
