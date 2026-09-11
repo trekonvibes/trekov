@@ -9,6 +9,7 @@ import { setAccount } from './lib/store'
 import { stopWatching, syncNow, watchRemote } from './lib/sync'
 import { NEW_PLACE, broadcastTransport } from './lib/notify'
 import AuthScreen from './components/AuthScreen'
+import Business from './components/Business'
 import Composer from './components/Composer'
 import Discover from './components/Discover'
 import MapView from './components/MapView'
@@ -31,8 +32,11 @@ const askedFor = new URLSearchParams(window.location.search).get('auth')
 const INITIAL_AUTH = LINK_ERROR ? 'signin' : (askedFor === 'signup' || askedFor === 'signin' ? askedFor : null)
 const readHash = () => {
   const h = window.location.hash.replace('#', '')
+  // trekov.com/app/#business opens the free business listing over Discover.
+  if (h === 'business') return 'discover'
   return TABS.includes(h) ? h : 'map'
 }
+const wantsBusiness = () => window.location.hash === '#business'
 
 export default function App() {
   const [tab, setTab] = useState(readHash)
@@ -46,6 +50,7 @@ export default function App() {
   const [nav, setNav] = useState(null)
   // A trip that arrived over a share link, waiting to be accepted.
   const [incoming, setIncoming] = useState(() => decodeTripFromHash())
+  const [business, setBusiness] = useState(wantsBusiness)
 
   const savedCount = useStore(selectSavedPlaces).length
   const unread = useStore(selectUnreadCount)
@@ -79,6 +84,7 @@ export default function App() {
     const sync = () => {
       const trip = decodeTripFromHash()
       if (trip) return setIncoming(trip)
+      setBusiness(wantsBusiness())
       setTab(readHash())
     }
     window.addEventListener('hashchange', sync)
@@ -131,6 +137,12 @@ export default function App() {
     setTab(next)
   }
 
+  // Opening puts #business in the address, so the phone's Back button closes it
+  // and returns to the tab it was opened from.
+  const cameFrom = useRef('discover')
+  const openBusiness = () => { cameFrom.current = tab; window.location.hash = 'business' }
+  const closeBusiness = () => { setBusiness(false); go(cameFrom.current) }
+
   function acceptTrip() {
     // Land on the trip that just arrived, not on whatever was open before.
     setOpenTrip(importTrip(incoming))
@@ -148,9 +160,9 @@ export default function App() {
                   onGoLive={(trip) => trip.stops[0] && startNavigation(trip.stops[0].placeId, trip.id)}
                   onOpenTrip={(id) => { setOpenTrip(id); go('trips') }}
                   onStartGroup={() => { setOpenTrip(null); go('trips'); setNewGroup((n) => n + 1) }} />,
-    discover: <Discover onOpenPlace={setPlace} onNavigate={startNavigation} />,
+    discover: <Discover onOpenPlace={setPlace} onNavigate={startNavigation} onListBusiness={openBusiness} />,
     trips: <Trips onOpenPlace={setPlace} open={openTrip} onOpen={setOpenTrip} onNavigate={startNavigation} newGroup={newGroup} />,
-    profile: <Profile onPost={() => setComposing(true)} onAuth={setAuthMode} />,
+    profile: <Profile onPost={() => setComposing(true)} onAuth={setAuthMode} onListBusiness={openBusiness} />,
   }
 
   return (
@@ -184,6 +196,8 @@ export default function App() {
           onNewPlace={announcePlace}
         />
       )}
+
+      {business && <Business onClose={closeBusiness} onAuth={setAuthMode} />}
 
       {authMode && !account && (
         <AuthScreen mode={authMode} notice={LINK_ERROR} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />

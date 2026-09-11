@@ -16,7 +16,7 @@ function Thumb({ place, className = 'size-16 rounded-xl' }) {
     : <span className={`${className} grid place-items-center bg-raised shrink-0`}><Logo size={18} /></span>
 }
 
-export default function Discover({ onOpenPlace, onNavigate }) {
+export default function Discover({ onOpenPlace, onNavigate, onListBusiness }) {
   // Prefer the traveller's own position; fall back to the month's attraction
   // so the section is useful before location permission is granted.
   const [gps, setGps] = useState(null)
@@ -131,7 +131,7 @@ export default function Discover({ onOpenPlace, onNavigate }) {
         )}
 
         {/* Around wherever the traveller is, or the month's attraction. */}
-        <Nearby centre={here} centreName={hereName} onNavigate={onNavigate} />
+        <Nearby centre={here} centreName={hereName} onNavigate={onNavigate}  onListBusiness={onListBusiness}/>
 
         {/* --------------------------------------------------- new places */}
         <section>

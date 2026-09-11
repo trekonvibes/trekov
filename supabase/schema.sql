@@ -212,14 +212,15 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- =====================================================================
--- Partner listings
+-- Business listings
 --
--- Businesses that pay to be listed. Everything here is shown ABOVE the
--- results Google returns, which is the whole product: the subscription buys
--- placement above commodity data, not the existence of a result.
---
--- `subscribed_until` is enforced in the read policy, so a lapsed listing
--- stops being served without anyone having to remember to delete it.
+-- Free to create: any signed-in business lists itself, with no sign-up fee.
+-- A free listing sits among the nearby results by distance ("On Trekov").
+-- An optional boost (plan <> 'basic' with a live subscribed_until) buys
+-- "Partner" placement above Google's results; when it lapses the listing
+-- falls back to free. The self-serve rules — hidden flag, categories, the
+-- guard that keeps verified/plan/subscribed_until Trekov's to set, and the
+-- 5-per-owner cap — live in listings-selfserve.sql (run it after this file).
 -- =====================================================================
 create table if not exists listings (
   id               text primary key,
@@ -242,7 +243,7 @@ create table if not exists listings (
 -- is a schema edit rather than a migration nobody remembers to write.
 alter table listings drop constraint if exists listings_category_check;
 alter table listings add constraint listings_category_check check (category in
-  ('hotel','food','street_food','bike_service','car_service','rental','attraction'));
+  ('hotel','food','street_food','bike_service','car_service','fuel','rental','attraction'));
 
 create index if not exists listings_category_idx on listings (category);
 create index if not exists listings_location_idx on listings (lat, lng);

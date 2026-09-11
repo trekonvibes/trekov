@@ -1,14 +1,15 @@
 // What is around a place: hotels, food, repair shops, other attractions.
 //
-// Two sources, deliberately ranked:
-//   1. Partner listings from our own table — businesses paying to be listed
+// Two sources:
+//   1. Businesses listed on Trekov — free for any business to add
 //   2. Google Places — so a category is never empty anywhere
 //
-// Partners come first and are labelled. That ordering is the product: the
-// subscription buys placement above commodity data, not the existence of a
-// result. Nothing here is ever invented — an empty category shows as empty.
+// A free listing sits among the results by distance, labelled "On Trekov".
+// Only an optional boost buys "Partner" placement at the top; listing itself
+// never costs anything. Nothing here is ever invented — an empty category
+// shows as empty.
 
-import { supabase } from './supabase'
+import { photoUrl, supabase } from './supabase'
 import { distance } from './geo'
 
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
@@ -57,25 +58,30 @@ const cacheKey = (c, lat, lng, km) => `${c}|${lat.toFixed(2)},${lng.toFixed(2)}|
 /** Roughly degrees per km, for a cheap bounding box. */
 const KM = 1 / 111
 
-async function partnerListings(category, { lat, lng }, radiusKm) {
+async function trekovListings(category, { lat, lng }, radiusKm) {
   if (!supabase) return []
   const d = radiusKm * KM
   const { data, error } = await supabase
     .from('listings')
-    .select('*')
+    .select('id, name, description, phone, address, lat, lng, url, photo_path, verified, plan, subscribed_until')
     .eq('category', category)
+    .eq('hidden', false)
     .gte('lat', lat - d).lte('lat', lat + d)
     .gte('lng', lng - d).lte('lng', lng + d)
-    .limit(10)
+    .limit(20)
   if (error) { console.info('Trekov: listings unavailable —', error.message); return [] }
+  const today = new Date().toISOString().slice(0, 10)
   return (data ?? []).map((l) => ({
-    id: `partner-${l.id}`,
-    partner: true,
+    id: `listing-${l.id}`,
+    listing: true,
+    // A boost that has lapsed leaves an ordinary free listing, not a gap.
+    partner: l.plan !== 'basic' && Boolean(l.subscribed_until) && l.subscribed_until >= today,
     verified: l.verified,
     name: l.name,
     detail: l.address || l.description,
     phone: l.phone,
     url: l.url,
+    photo: photoUrl(l.photo_path),
     rating: null,
     lat: l.lat,
     lng: l.lng,
@@ -138,8 +144,8 @@ async function googlePlaces(query, centre, radiusKm, tag = '') {
 /** Partner listings first, then Google, de-duplicated by name. */
 async function searchAt(category, centre, radiusKm) {
   const searches = category.queries ?? [{ q: category.query, tag: '' }]
-  const [partners, ...groups] = await Promise.all([
-    partnerListings(category.id, centre, radiusKm),
+  const [listings, ...groups] = await Promise.all([
+    trekovListings(category.id, centre, radiusKm),
     ...searches.map(({ q, tag }) =>
       googlePlaces(q, centre, radiusKm, tag).catch((e) => {
         console.info('Trekov: places search failed —', e.message)
@@ -160,11 +166,19 @@ async function searchAt(category, centre, radiusKm) {
   // heading is arithmetic, not a hope.
   const km = (r) => (r.lat == null ? null : distance(centre, { lat: r.lat, lng: r.lng }) / 1000)
 
-  const seen = new Set(partners.map((p) => p.name.toLowerCase()))
-  return [...partners, ...google.filter((g) => !seen.has(g.name.toLowerCase()))]
+  const seen = new Set(listings.map((p) => p.name.toLowerCase()))
+  const all = [...listings, ...google.filter((g) => !seen.has(g.name.toLowerCase()))]
     .map((r) => ({ ...r, km: km(r) }))
     .filter((r) => r.km == null || r.km <= radiusKm)
+  // Boosted partners lead; everyone else — free Trekov listings and Google's —
+  // in order of distance, which is what "near you" means.
+  const lead = all.filter((r) => r.partner)
+  const rest = all.filter((r) => !r.partner).sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9))
+  return [...lead, ...rest]
 }
+
+/** After a business saves its listing, so the next search includes it. */
+export const clearNearbyCache = () => cache.clear()
 
 /**
  * How far to widen when a place is remote.

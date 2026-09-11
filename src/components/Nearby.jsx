@@ -8,7 +8,7 @@ import {
 } from './Icons'
 
 /** Category id to icon. Kept here rather than in the data, which stays plain. */
-const ICONS = {
+export const CATEGORY_ICONS = {
   hotel: BedIcon,
   food: CutleryIcon,
   street_food: BowlIcon,
@@ -28,7 +28,7 @@ const RADIUS_KM = 8
  * and results only appear once you pick one. Showing every category's list at
  * once buried the choice under whichever list happened to load first.
  */
-export default function Nearby({ centre, centreName, onNavigate }) {
+export default function Nearby({ centre, centreName, onNavigate, onListBusiness }) {
   const [category, setCategory] = useState(null)
   const [results, setResults] = useState([])
   // The radius that actually answered, which is not always the one asked for.
@@ -52,7 +52,7 @@ export default function Nearby({ centre, centreName, onNavigate }) {
   if (!centre) return null
 
   const active = CATEGORIES.find((c) => c.id === category)
-  const ActiveIcon = active ? (ICONS[active.id] ?? MountainIcon) : MountainIcon
+  const ActiveIcon = active ? (CATEGORY_ICONS[active.id] ?? MountainIcon) : MountainIcon
 
   return (
     <section>
@@ -63,7 +63,7 @@ export default function Nearby({ centre, centreName, onNavigate }) {
 
           <ul className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {CATEGORIES.map((c) => {
-              const CategoryIcon = ICONS[c.id] ?? MountainIcon
+              const CategoryIcon = CATEGORY_ICONS[c.id] ?? MountainIcon
               return (
                 <li key={c.id}>
                   <button onClick={() => setCategory(c.id)}
@@ -111,10 +111,18 @@ export default function Nearby({ centre, centreName, onNavigate }) {
             {results.map((r) => (
               <li key={r.id}
                   className={`flex flex-col rounded-2xl border p-3 ${r.partner ? 'border-brand/50 bg-brand/5' : 'border-line bg-surface'}`}>
+                {r.photo && <img src={r.photo} alt="" loading="lazy" className="w-full h-20 object-cover rounded-xl mb-2 bg-raised" />}
                 {r.partner && (
                   <span className="self-start rounded-full bg-brand text-ink text-[9px] font-bold
                                    uppercase tracking-[0.1em] px-1.5 py-0.5 mb-1.5">
                     {r.verified ? 'Verified partner' : 'Partner'}
+                  </span>
+                )}
+                {/* A free listing: the business added itself to Trekov. */}
+                {r.listing && !r.partner && (
+                  <span className="self-start rounded-full border border-brand/50 text-brand text-[9px] font-bold
+                                   uppercase tracking-[0.1em] px-1.5 py-0.5 mb-1.5">
+                    {r.verified ? 'On Trekov · Verified' : 'On Trekov'}
                   </span>
                 )}
                 <p className="text-sm font-semibold leading-tight line-clamp-2">
@@ -174,6 +182,15 @@ export default function Nearby({ centre, centreName, onNavigate }) {
               </li>
             ))}
           </ul>
+
+          {/* Any business can add itself, free — the empty category is an invitation. */}
+          {onListBusiness && (state === 'ready' || state === 'empty') && (
+            <button onClick={onListBusiness}
+                    className="mt-3 w-full rounded-2xl border border-dashed border-brand/50 px-4 py-3 text-left hover:bg-brand/5">
+              <span className="block text-sm font-semibold text-brand">Run a business near here?</span>
+              <span className="block text-xs text-mist mt-0.5">List it on Trekov — free, no sign-up fee.</span>
+            </button>
+          )}
 
           {state === 'ready' && !results.some((r) => r.partner) && (
             <>

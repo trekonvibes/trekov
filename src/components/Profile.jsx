@@ -5,7 +5,7 @@ import Account from './Account'
 import Media from './Media'
 import ProfileEditor from './ProfileEditor'
 
-export default function Profile({ onPost, onAuth }) {
+export default function Profile({ onPost, onAuth, onListBusiness }) {
   const [confirmReset, setConfirmReset] = useState(false)
   const [editing, setEditing] = useState(false)
   const profile = useStore((s) => s.profile)
@@ -42,6 +42,17 @@ export default function Profile({ onPost, onAuth }) {
       {editing && <ProfileEditor onClose={() => setEditing(false)} />}
 
       <Account onAuth={onAuth} />
+
+      {onListBusiness && (
+        <button onClick={onListBusiness}
+                className="mx-5 mt-3 w-[calc(100%-2.5rem)] flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left hover:border-brand">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Your business on Trekov</span>
+            <span className="block text-xs text-mist mt-0.5">List a stay, dhaba, garage, fuel stop or rental — free</span>
+          </span>
+          <span className="text-brand text-xs font-semibold shrink-0">Open</span>
+        </button>
+      )}
 
       <div className="grid grid-cols-3 mx-5 mt-4 rounded-2xl border border-line bg-surface divide-x divide-line">
         {stats.map(([label, value]) => (
