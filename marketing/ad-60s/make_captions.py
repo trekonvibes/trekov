@@ -43,20 +43,6 @@ for key, l1, l2 in CAPS:
         y += int(f.size * 1.18)
     im.save(os.path.join(OUT, f"{key}.png"))
 
-# End card: logo mark, name, line, URL.
-im = Image.new("RGB", (W, H), (8, 12, 11)); d = ImageDraw.Draw(im)
-glow = Image.new("RGB", (W, H), (8, 12, 11)); gd = ImageDraw.Draw(glow)
-for r in range(900, 0, -8):
-    a = int(70 * (1 - r / 900) ** 1.6); gd.ellipse([W / 2 - r, 820 - r, W / 2 + r, 820 + r], fill=(8, 12 + a, 11 + int(a * .8)))
-im.paste(glow.filter(ImageFilter.GaussianBlur(60))); d = ImageDraw.Draw(im)
-cx, cy = W // 2, 700
-d.ellipse([cx - 70, cy - 110, cx + 70, cy + 30], fill=BRAND); d.polygon([(cx - 58, cy - 10), (cx + 58, cy - 10), (cx, cy + 90)], fill=BRAND)
-d.ellipse([cx - 28, cy - 68, cx + 28, cy - 12], fill=(8, 12, 11))
-for text, f, col, y in (("trekov", bold(150), (255, 255, 255), 830), ("The map is the feed.", demi(62), (255, 255, 255), 1030),
-                        ("Live group trips · Easy planning · GPS-verified photos", demi(38), (170, 190, 184), 1130)):
-    w = d.textlength(text, font=f); d.text(((W - w) / 2, y), text, font=f, fill=col)
-bw, bh = 560, 130; x0 = (W - bw) // 2
-d.rounded_rectangle([x0, 1290, x0 + bw, 1290 + bh], radius=65, fill=BRAND)
-f = bold(64); w = d.textlength("trekov.com", font=f); d.text(((W - w) / 2, 1318), "trekov.com", font=f, fill=(6, 20, 15))
-im.save(os.path.join(OUT, "endcard.png"))
-print("captions", len(CAPS), "+ endcard ->", OUT)
+# The end card uses the real logo and Outfit, so it is rendered from
+# endcard.html by render_endcard.sh rather than drawn here.
+print("captions", len(CAPS), "->", OUT)
