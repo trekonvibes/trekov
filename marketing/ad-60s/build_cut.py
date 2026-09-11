@@ -127,12 +127,14 @@ for i, (k, st) in enumerate(voiced_marks):
     ms = int((st + LEAD) * 1000)
     chains.append(f"[{i + 2}:a]aresample=44100,adelay={ms}|{ms}[l{i}]")
 n = len(voiced_marks)
+last_word = max(st + LEAD + dur(lines[k]) for k, st in voiced_marks)
+fade_at = min(max(last_word + 0.25, TARGET - 2.5), TARGET - 0.6)
 fc = ";".join(chains) + ";" + "".join(f"[l{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0:duration=longest,volume=1.5,apad=whole_dur={TARGET},asplit=2[vo][vo2];" \
-     f"[1:a]volume=0.5,afade=t=in:st=0:d=0.5,afade=t=out:st={TARGET - 3}:d=3[mus];" \
+     f"[1:a]volume=0.5,apad,atrim=0:{TARGET},afade=t=in:st=0:d=0.5,afade=t=out:st={fade_at:.2f}:d={TARGET - fade_at:.2f}[mus];" \
      "[mus][vo]sidechaincompress=threshold=0.04:ratio=7:attack=15:release=350[duck];" \
-     "[duck][vo2]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.0:LRA=7[a]"
+     f"[duck][vo2]amix=inputs=2:duration=longest:normalize=0,atrim=0:{TARGET},loudnorm=I=-14:TP=-1.0:LRA=7[a]"
 final = os.path.join(HERE, f"trekov-ad-{CUT}s-vertical.mp4")
-run(["ffmpeg", "-y", "-i", video, "-i", os.path.join(P, "music-60.mp3"), *inputs, "-filter_complex", fc,
+run(["ffmpeg", "-y", "-i", video, "-i", os.path.join(P, "music-bed.mp3"), *inputs, "-filter_complex", fc,
      "-map", "0:v", "-map", "[a]", "-t", f"{TARGET}", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
      "-maxrate", "4500k", "-bufsize", "9000k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", final])
 json.dump(marks, open(os.path.join(TMP, "marks.json"), "w"))
