@@ -73,9 +73,12 @@ def still(img, d, out):
          f"scale={W*2}:{H*2},zoompan=z='1+0.03*on/{n}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={n}:s={W}x{H}:fps={FPS},format=yuv420p",
          "-frames:v", str(n), "-an", "-c:v", "libx264", "-crf", "17", out])
 
-def caption(src, cap, out):
+def caption(src, cap, out, fade=True):
+    # Fade in only where the caption first appears; later shots in the same
+    # scene keep it solid, or it would flicker off at every cut.
+    fx = ",fade=t=in:st=0:d=0.25:alpha=1" if fade else ""
     run(["ffmpeg", "-y", "-i", src, "-loop", "1", "-i", cap, "-filter_complex",
-         f"[1:v]format=rgba,fps={FPS},fade=t=in:st=0:d=0.25:alpha=1[c];[0:v][c]overlay=0:0:shortest=1,format=yuv420p",
+         f"[1:v]format=rgba,fps={FPS}{fx}[c];[0:v][c]overlay=0:0:shortest=1,format=yuv420p",
          "-an", "-c:v", "libx264", "-crf", "17", out])
 
 # Each line trimmed of the silence the voice model pads it with, then — only if
@@ -110,7 +113,7 @@ for k in ORDER:
         d = s[3] if j < len(shots) - 1 else total - fixed
         raw, out = os.path.join(TMP, f"{k}-{j}-raw.mp4"), os.path.join(TMP, f"{k}-{j}.mp4")
         (broll if kind == "broll" else app if kind == "app" else still)(src, ss, d, raw) if kind != "end" else still(src, d, raw)
-        if cap: caption(raw, os.path.join(T, f"{cap}.png"), out)
+        if cap: caption(raw, os.path.join(T, f"{cap}.png"), out, fade=(j == 0))
         else: os.replace(raw, out)
         parts.append(out)
     t += total
