@@ -135,6 +135,19 @@ export default function Nearby({ centre, centreName, onNavigate, onListBusiness 
                   {r.name}
                 </p>
                 {r.detail && <p className="text-[11px] text-mist line-clamp-2 mt-0.5">{r.detail}</p>}
+                {r.products?.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5">
+                    {r.products.slice(0, 2).map((p, i) => (
+                      <li key={i} className="flex items-baseline gap-1 text-[11px]">
+                        <span className="truncate flex-1">{p.name}</span>
+                        <span className="font-semibold text-brand tabular-nums shrink-0">
+                          ₹{p.price_inr.toLocaleString('en-IN')}{p.unit ? <span className="text-mist font-normal"> {p.unit}</span> : null}
+                        </span>
+                      </li>
+                    ))}
+                    {r.products.length > 2 && <li className="text-[10px] text-mist">+{r.products.length - 2} more</li>}
+                  </ul>
+                )}
 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 text-[11px]">
                   {r.km != null && (

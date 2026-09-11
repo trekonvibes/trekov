@@ -70,8 +70,18 @@ async function trekovListings(category, { lat, lng }, radiusKm) {
     .gte('lng', lng - d).lte('lng', lng + d)
     .limit(20)
   if (error) { console.info('Trekov: listings unavailable —', error.message); return [] }
+  const rows = data ?? []
+  // Products come back only for listings with a live products plan (see
+  // supabase/listing-products.sql), so none are shown otherwise.
+  const products = {}
+  if (rows.length) {
+    const { data: ps } = await supabase.from('listing_products')
+      .select('listing_id, name, price_inr, unit').in('listing_id', rows.map((l) => l.id))
+      .eq('available', true).order('position').order('created_at')
+    for (const p of ps ?? []) (products[p.listing_id] ||= []).push(p)
+  }
   const today = new Date().toISOString().slice(0, 10)
-  return (data ?? []).map((l) => ({
+  return rows.map((l) => ({
     id: `listing-${l.id}`,
     listing: true,
     // A boost that has lapsed leaves an ordinary free listing, not a gap.
@@ -82,6 +92,7 @@ async function trekovListings(category, { lat, lng }, radiusKm) {
     phone: l.phone,
     url: l.url,
     photo: photoUrl(l.photo_path),
+    products: products[l.id] ?? [],
     rating: null,
     lat: l.lat,
     lng: l.lng,

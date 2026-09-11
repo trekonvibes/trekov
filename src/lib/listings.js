@@ -10,7 +10,7 @@ import { photoUrl, supabase } from './supabase'
 import { clearNearbyCache } from './nearby'
 
 export const MAX_LISTINGS = 5
-const COLUMNS = 'id, category, name, description, phone, address, lat, lng, url, photo_path, verified, hidden, plan, subscribed_until, created_at'
+const COLUMNS = 'id, category, name, description, phone, address, lat, lng, url, photo_path, verified, hidden, plan, subscribed_until, products_until, created_at'
 
 async function uid() {
   const { data } = await supabase.auth.getUser()

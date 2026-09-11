@@ -221,6 +221,8 @@ exception when duplicate_object then null; end $$;
 -- falls back to free. The self-serve rules — hidden flag, categories, the
 -- guard that keeps verified/plan/subscribed_until Trekov's to set, and the
 -- 5-per-owner cap — live in listings-selfserve.sql (run it after this file).
+-- Products with prices (the paid monthly products plan) are in
+-- listing-products.sql (run it after listings-selfserve.sql).
 -- =====================================================================
 create table if not exists listings (
   id               text primary key,

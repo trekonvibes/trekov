@@ -148,6 +148,7 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
                             className="w-full flex items-center gap-2 text-[12px] text-left py-0.5 rounded
                                        hover:text-brand disabled:hover:text-inherit">
                       {r.partner && <span className="text-[9px] font-bold text-brand shrink-0">PARTNER</span>}
+                      {r.listing && !r.partner && <span className="text-[9px] font-bold text-brand/80 shrink-0">ON TREKOV</span>}
                       {r.tag && (
                         <span className="rounded bg-raised border border-line text-mist text-[9px]
                                          font-bold px-1 shrink-0">{r.tag}</span>

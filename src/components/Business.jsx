@@ -3,6 +3,9 @@ import { hasSupabase } from '../lib/auth'
 import { useStore } from '../lib/store'
 import { CATEGORIES } from '../lib/nearby'
 import { MAX_LISTINGS, deleteListing, myListings, saveListing, validPhone } from '../lib/listings'
+import {
+  PRODUCTS_PLAN_INR, UNITS, activationMailto, deleteProduct, formatInr, myProducts, planActive, saveProduct,
+} from '../lib/products'
 import { getFix, gpsMessage } from '../lib/gps'
 import { CATEGORY_ICONS } from './Nearby'
 import Camera from './Camera'
@@ -97,7 +100,8 @@ function Intro({ onAuth }) {
       </div>
       <ul className="space-y-2.5 text-sm">
         {['Free — no sign-up fee, no commission', 'Shows in Discover and trip planning near you',
-          'Edit or remove it any time'].map((t) => (
+          'Edit or remove it any time',
+          `Optional: show rooms, rentals or a menu with prices — ${formatInr(PRODUCTS_PLAN_INR)}/month`].map((t) => (
           <li key={t} className="flex gap-2.5"><span className="text-brand font-bold">✓</span>{t}</li>
         ))}
       </ul>
@@ -141,6 +145,7 @@ function ListingCard({ listing: l, onEdit, onDeleted }) {
         <p className={`text-xs mt-2 ${l.hidden ? 'text-rose' : 'text-brand'}`}>
           {l.hidden ? 'Hidden by Trekov — contact us if you think this is a mistake.' : '● Live in Discover'}
         </p>
+        <ProductsSection listing={l} />
         {error && <p className="text-xs text-rose mt-2">{error}</p>}
         {confirm ? (
           <div className="flex items-center gap-2 mt-3">
@@ -313,5 +318,134 @@ function ListingForm({ initial, onCancel, onSaved }) {
       {camera && <Camera onCapture={(file) => { setPhoto(file); setF((v) => ({ ...v, removePhoto: false })); setCamera(false) }}
                          onCancel={() => setCamera(false)} />}
     </form>
+  )
+}
+
+const fmtDate = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+const BLANK_PRODUCT = { name: '', price_inr: '', unit: '', description: '', available: true }
+
+/**
+ * Products and prices on a listing. The listing itself is free; products
+ * need the monthly products plan, which Trekov switches on per listing.
+ */
+function ProductsSection({ listing }) {
+  const active = planActive(listing)
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState(null)
+  const [editing, setEditing] = useState(null)
+  const [error, setError] = useState('')
+  const load = () => myProducts(listing.id).then(setItems).catch((e) => { setItems([]); setError(e.message) })
+  useEffect(() => { if (active && open && items === null) load() }, [active, open])
+
+  if (!active) {
+    return (
+      <div className="mt-3 rounded-xl border border-dashed border-brand/40 p-3">
+        <p className="text-xs font-semibold">Show your rooms, rentals or menu with prices</p>
+        <p className="text-[11px] text-mist mt-0.5 leading-relaxed">
+          Products plan · {formatInr(PRODUCTS_PLAN_INR)}/month, unlimited products. Your listing stays free either way.
+        </p>
+        <a href={activationMailto(listing)}
+           className="mt-2 inline-block rounded-full bg-brand text-ink px-3 py-1.5 text-xs font-semibold">
+          Request the products plan
+        </a>
+        <p className="text-[10px] text-mist mt-1.5">Online payment is coming soon — we'll reply by email to set it up.</p>
+      </div>
+    )
+  }
+
+  const done = () => { setEditing(null); load() }
+  return (
+    <div className="mt-3 rounded-xl border border-line p-3">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+              className="w-full flex items-center justify-between gap-2 text-left">
+        <span className="text-xs font-semibold">Products & prices{items ? ` · ${items.length}` : ''}</span>
+        <span className="text-[10px] text-brand shrink-0">Plan active till {fmtDate(listing.products_until)}</span>
+      </button>
+      {open && (
+        <div className="mt-2.5 space-y-2">
+          {error && <p className="text-xs text-rose">{error}</p>}
+          {items === null ? <p className="text-xs text-mist">Loading…</p> : items.map((p) => (
+            editing?.id === p.id ? (
+              <ProductEditor key={p.id} listingId={listing.id} initial={editing} onDone={done} onCancel={() => setEditing(null)} />
+            ) : (
+              <div key={p.id} className="flex items-center gap-2 text-xs">
+                <span className={`flex-1 truncate ${p.available ? '' : 'text-mist line-through'}`}>{p.name}</span>
+                <span className="font-semibold tabular-nums">
+                  {formatInr(p.price_inr)}{p.unit && <span className="text-mist font-normal"> {p.unit}</span>}
+                </span>
+                <button type="button" onClick={() => setEditing({ ...p })} className="text-brand font-semibold">Edit</button>
+              </div>
+            )
+          ))}
+          {editing && !editing.id ? (
+            <ProductEditor listingId={listing.id} initial={editing} onDone={done} onCancel={() => setEditing(null)} />
+          ) : !editing && (
+            <button type="button" onClick={() => setEditing({ ...BLANK_PRODUCT, position: items?.length ?? 0 })}
+                    className="w-full rounded-full border border-dashed border-line py-2 text-xs font-semibold text-mist hover:border-brand hover:text-brand">
+              + Add a product
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProductEditor({ listingId, initial, onDone, onCancel }) {
+  const [p, setP] = useState(initial)
+  const set = (k) => (e) => setP((v) => ({ ...v, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [confirm, setConfirm] = useState(false)
+  const problem = p.name.trim().length < 2 ? 'Add a product name.'
+    : String(p.price_inr).trim() === '' ? 'Enter the price in rupees.' : ''
+
+  async function save() {
+    if (problem) return setError(problem)
+    setBusy(true); setError('')
+    try { await saveProduct(listingId, p); onDone() } catch (e) { setError(e.message); setBusy(false) }
+  }
+  async function remove() {
+    setBusy(true); setError('')
+    try { await deleteProduct(p.id); onDone() } catch (e) { setError(e.message); setBusy(false) }
+  }
+
+  return (
+    <div className="rounded-xl bg-raised/60 p-2.5 space-y-2">
+      <input className={field} value={p.name} onChange={set('name')} maxLength={80} placeholder="e.g. Deluxe room with valley view" />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-mist">₹</span>
+          <input className={`${field} pl-7`} value={p.price_inr} inputMode="numeric" maxLength={8} placeholder="1500"
+                 onChange={(e) => setP((v) => ({ ...v, price_inr: e.target.value.replace(/[^\d]/g, '') }))} />
+        </div>
+        <select className={`${field} flex-1`} value={p.unit} onChange={set('unit')}>
+          <option value="">No unit</option>
+          {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+      </div>
+      <input className={field} value={p.description} onChange={set('description')} maxLength={300} placeholder="Short note (optional)" />
+      <label className="flex items-center gap-2 text-xs text-mist">
+        <input type="checkbox" checked={p.available} onChange={set('available')} /> Available now
+      </label>
+      {error && <p className="text-xs text-rose">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={save} disabled={busy}
+                className="flex-1 rounded-full bg-brand text-ink py-1.5 text-xs font-semibold disabled:opacity-50">
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" onClick={onCancel} className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold">Cancel</button>
+        {p.id && (confirm ? (
+          <button type="button" onClick={remove} disabled={busy} className="rounded-full bg-rose text-white px-3 py-1.5 text-xs font-semibold">
+            Delete
+          </button>
+        ) : (
+          <button type="button" onClick={() => setConfirm(true)} aria-label="Delete product"
+                  className="rounded-full border border-line px-2.5 py-1.5 text-mist hover:text-rose">
+            <TrashIcon size={13} />
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
