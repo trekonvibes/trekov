@@ -15,7 +15,7 @@ export default function PinMap({ lat, lng, onMove }) {
     createMap(host.current, { center: [lat, lng], zoom: 5, zoomControl: true, mapType: 'hybrid' }).then((d) => {
       if (!alive) { d.destroy(); return }
       drv = d
-      const pin = d.htmlMarker([lat, lng], PIN_HTML, { size: [54, 60], anchor: [27, 56] })
+      const pin = d.htmlMarker([lat, lng], PIN_HTML, { size: [44, 58], anchor: [22, 41] })
       off = d.onClick(([a, b]) => {
         pin.setLatLng([a, b])
         onMove(+a.toFixed(5), +b.toFixed(5))

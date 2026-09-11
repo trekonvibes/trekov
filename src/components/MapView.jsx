@@ -10,43 +10,58 @@ import { CloseIcon, NavIcon, PlusIcon, RouteIcon, SaveIcon, SearchIcon, Wordmark
 
 const INDIA = [22.6, 79.0]
 
+/** Screen pixels per degree of longitude at a zoom level (Web Mercator, 256px tiles). */
+const pxPerDeg = (zoom) => (256 * 2 ** zoom) / 360
+/** Markers closer than this on screen merge into one cluster, so none overlap. */
+const MERGE_PX = 56
+/** From this zoom on, every place stands alone. */
+const CLOSE_ZOOM = 15
+/** Zoomed in this close, pins shrink to small dots so the streets around them show. */
+const SMALL_PIN_ZOOM = 13
+
 /**
- * Markers are grouped by a zoom-dependent grid so a wide view shows a handful
- * of counted clusters instead of a hundred overlapping pins. Zooming in splits
- * them apart until each place stands alone.
+ * Markers are grouped by their distance on screen, at every zoom: two places
+ * closer than a marker's width become one counted cluster instead of two
+ * circles piled on each other. Zooming in splits them apart until each place
+ * stands alone. (A fixed grid used to pack 52px bubbles into ~28px cells, so
+ * at the India view they covered the whole map.)
  */
 function cluster(places, zoom) {
-  if (zoom >= 8) return places.map((p) => ({ key: p.id, lat: p.lat, lng: p.lng, places: [p] }))
-  const cell = 40 / 2 ** zoom
-  const buckets = new Map()
+  if (zoom >= CLOSE_ZOOM) return places.map((p) => ({ key: p.id, lat: p.lat, lng: p.lng, places: [p] }))
+  const ppd = pxPerDeg(zoom)
+  const groups = []
   for (const p of places) {
-    const key = `${Math.floor(p.lat / cell)}:${Math.floor(p.lng / cell)}`
-    if (!buckets.has(key)) buckets.set(key, [])
-    buckets.get(key).push(p)
+    // A Mercator map stretches latitude by 1/cos(latitude).
+    const sec = 1 / Math.cos((p.lat * Math.PI) / 180)
+    const g = groups.find((c) => Math.hypot((p.lng - c.lng0) * ppd, (p.lat - c.lat0) * ppd * sec) < MERGE_PX)
+    if (g) g.places.push(p)
+    else groups.push({ lat0: p.lat, lng0: p.lng, places: [p] })
   }
-  return [...buckets.entries()].map(([key, group]) => ({
-    key,
-    lat: group.reduce((n, p) => n + p.lat, 0) / group.length,
-    lng: group.reduce((n, p) => n + p.lng, 0) / group.length,
-    places: group,
+  return groups.map((g) => ({
+    key: g.places[0].id,
+    lat: g.places.reduce((n, p) => n + p.lat, 0) / g.places.length,
+    lng: g.places.reduce((n, p) => n + p.lng, 0) / g.places.length,
+    places: g.places,
   }))
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
-function markerHtml(node) {
+function markerHtml(node, zoom) {
   const { places } = node
   if (places.length === 1) {
     const p = places[0]
     const thumb = p.cover && !p.cover.blobKey ? p.cover.src : ''
-    return `<div class="tk-pin ${p.saved ? 'is-saved' : ''}">
+    return `<div class="tk-pin ${p.saved ? 'is-saved' : ''} ${zoom >= SMALL_PIN_ZOOM ? 'is-sm' : ''}">
               <div class="tk-pin-img" ${thumb ? `style="background-image:url('${thumb}')"` : ''}></div>
               ${p.postCount ? `<span class="tk-pin-count">${p.postCount}</span>` : ''}
               <span class="tk-pin-label">${esc(p.name)}</span>
             </div>`
   }
   const total = places.reduce((n, p) => n + p.postCount, 0)
-  return `<div class="tk-cluster"><b>${places.length}</b><span>${total ? `${total} photo${total === 1 ? '' : 's'}` : 'places'}</span></div>`
+  // Just the count: the photo tally moved to the tooltip, and the bubble shrank with it.
+  const title = `${places.length} places${total ? ` · ${total} photo${total === 1 ? '' : 's'}` : ''}`
+  return `<div class="tk-cluster ${places.length >= 25 ? 'is-lg' : ''}" title="${title}"><b>${places.length}</b></div>`
 }
 
 export default function MapView({ onOpenPlace, onNewPlace, onGoLive, onOpenTrip, onStartGroup }) {
@@ -99,12 +114,16 @@ export default function MapView({ onOpenPlace, onNewPlace, onGoLive, onOpenTrip,
     markers.current.forEach((m) => m?.remove())
     markers.current = cluster(places, zoom).map((node) => {
       const single = node.places.length === 1
-      return d.htmlMarker([node.lat, node.lng], markerHtml(node), {
-        size: single ? [54, 68] : [52, 52],
-        anchor: single ? [27, 62] : [26, 26],
+      const small = zoom >= SMALL_PIN_ZOOM
+      const lg = node.places.length >= 25
+      // Anchors sit on the pin's tip (see .tk-pin in index.css), so the point
+      // is the exact location rather than 12px below it.
+      return d.htmlMarker([node.lat, node.lng], markerHtml(node, zoom), {
+        size: single ? (small ? [44, 42] : [44, 58]) : lg ? [46, 46] : [40, 40],
+        anchor: single ? (small ? [22, 26] : [22, 41]) : lg ? [23, 23] : [20, 20],
         onClick: () => single
           ? onOpenPlace(node.places[0].id)
-          : d.flyTo([node.lat, node.lng], Math.min(zoom + 3, 9)),
+          : d.flyTo([node.lat, node.lng], Math.min(zoom + 2, CLOSE_ZOOM)),
       })
     })
   }, [places, zoom, onOpenPlace, engine])

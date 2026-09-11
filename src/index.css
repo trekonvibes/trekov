@@ -50,42 +50,52 @@ body {
 /* ------------------------------------------------------------------ map -- */
 .tk-marker { background: none; border: 0; }
 
-.tk-pin { position: relative; width: 54px; cursor: pointer; }
+/* Place pins: small enough that the map stays readable between them. The tip
+   (::after) is the exact location; markers are anchored on it. */
+.tk-pin { position: relative; width: 44px; cursor: pointer; }
 .tk-pin-img {
-  width: 46px; height: 46px; margin: 0 auto; border-radius: 50%;
+  width: 38px; height: 38px; margin: 0 auto; border-radius: 50%;
   background: #18211E center/cover no-repeat;
-  border: 2.5px solid #00C08B;
-  box-shadow: 0 6px 18px rgba(0,0,0,.6);
+  border: 2px solid #00C08B;
+  box-shadow: 0 3px 10px rgba(0,0,0,.45);
   transition: transform .16s ease;
 }
 .tk-pin::after {
-  content: ""; position: absolute; left: 50%; top: 44px; translate: -50% 0;
-  border: 6px solid transparent; border-top-color: #00C08B;
+  content: ""; position: absolute; left: 50%; top: 36px; translate: -50% 0;
+  border: 5px solid transparent; border-top-color: #00C08B;
 }
 .tk-pin.is-saved .tk-pin-img { border-color: #FFB33E; }
 .tk-pin.is-saved::after { border-top-color: #FFB33E; }
 .tk-pin:hover .tk-pin-img { transform: scale(1.09); }
 .tk-pin-count {
-  position: absolute; top: -3px; right: 1px;
-  background: #00C08B; color: #0B0F0E; font-size: 10px; font-weight: 700;
-  border-radius: 999px; min-width: 18px; height: 18px; padding: 0 5px;
+  position: absolute; top: -4px; right: 0;
+  background: #00C08B; color: #0B0F0E; font-size: 9px; font-weight: 700;
+  border-radius: 999px; min-width: 16px; height: 16px; padding: 0 4px;
   display: grid; place-items: center;
 }
 .tk-pin-label {
-  position: absolute; top: 56px; left: 50%; translate: -50% 0;
-  white-space: nowrap; font-size: 10.5px; font-weight: 600; color: #EEF3F1;
-  text-shadow: 0 1px 4px rgba(0,0,0,.95);
+  position: absolute; top: 43px; left: 50%; translate: -50% 0; pointer-events: none;
+  white-space: nowrap; font-size: 10px; font-weight: 600; color: #EEF3F1;
+  text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 1px rgba(0,0,0,.9);
 }
+/* Zoomed in close: a small dot, so the streets around the place stay visible. */
+.tk-pin.is-sm .tk-pin-img { width: 24px; height: 24px; }
+.tk-pin.is-sm::after { top: 22px; border-width: 4px; }
+.tk-pin.is-sm .tk-pin-label { top: 28px; }
+.tk-pin.is-sm .tk-pin-count { top: -6px; right: 4px; min-width: 14px; height: 14px; font-size: 8px; }
 
+/* Clusters: see-through with no blur, so the map shows through them. */
 .tk-cluster {
-  width: 52px; height: 52px; border-radius: 50%; cursor: pointer;
-  background: rgba(0,192,139,.16); border: 2px solid #00C08B;
-  backdrop-filter: blur(4px);
-  display: grid; place-content: center; text-align: center; line-height: 1;
-  box-shadow: 0 6px 18px rgba(0,0,0,.5);
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  background: rgba(11,16,15,.55); border: 2px solid #00C08B;
+  display: grid; place-content: center; line-height: 1;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  transition: transform .16s ease;
 }
-.tk-cluster b { font-size: 16px; color: #EEF3F1; }
-.tk-cluster span { font-size: 8px; color: #8FA39C; margin-top: 2px; }
+.tk-cluster:hover { transform: scale(1.08); }
+.tk-cluster b { font-size: 14px; color: #EEF3F1; }
+.tk-cluster.is-lg { width: 46px; height: 46px; }
+.tk-cluster.is-lg b { font-size: 15px; }
 
 /* The navigating-user marker: the chosen vehicle, rotated to travel direction.
    Rotation lives on the outer node and motion on the inner one, so the two

@@ -230,7 +230,7 @@ export default function Navigate({ place, trip, me, onClose }) {
       // drawn with the rest of the numbered sequence below — drawing both put
       // an unnumbered circle where the "1" should have been.
       if (!destIsTripStop.current) {
-        d.htmlMarker([dest.lat, dest.lng], pinHtml(place), { size: [54, 60], anchor: [27, 56] })
+        d.htmlMarker([dest.lat, dest.lng], pinHtml(place), { size: [44, 58], anchor: [22, 41] })
       }
       offDrag = d.onDragStart(() => setFollow(false))
       setEngine(d.kind)
