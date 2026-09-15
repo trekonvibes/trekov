@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Get Trekov — Android and iPhone</title>
+<meta name="description" content="Download Trekov for Android, or add it to your iPhone Home Screen." />
+<link rel="icon" href="/favicon.svg" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:#0B0F0E; --surface:#121917; --line:#1F2C28; --brand:#00C08B;
+    --text:#EEF3F1; --mist:#8FA39C; --wrap:760px;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ink); color:var(--text);
+         font:400 17px/1.65 Outfit, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color: var(--brand); }
+  .wrap { width:min(100% - 40px, var(--wrap)); margin-inline:auto; }
+  nav { border-bottom:1px solid var(--line); }
+  .nav-in { display:flex; align-items:center; justify-content:space-between; height:66px; }
+  .brand { display:flex; align-items:center; gap:9px; font-size:22px; font-weight:600; letter-spacing:-.035em; text-decoration:none; color:var(--text); }
+  main { padding:44px 0 80px; }
+  h1 { font-size:clamp(2rem,5vw,2.7rem); line-height:1.1; letter-spacing:-.035em; margin:0 0 10px; }
+  .when { color:var(--mist); font-size:14px; margin:0 0 34px; }
+  h2 { font-size:1.22rem; letter-spacing:-.02em; margin:38px 0 10px; }
+  h3 { font-size:1rem; margin:22px 0 6px; }
+  p, li { color:#D7E2DE; }
+  ul { padding-left:20px; }
+  li { margin:7px 0; }
+  .lede { font-size:19px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin:22px 0; }
+  .card p:first-child, .card ul:first-child { margin-top:0; }
+  .card p:last-child, .card ul:last-child { margin-bottom:0; }
+  table { width:100%; border-collapse:collapse; margin:16px 0; font-size:15.5px; }
+  th, td { text-align:left; vertical-align:top; padding:10px 12px; border-bottom:1px solid var(--line); }
+  th { color:var(--mist); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+  footer { border-top:1px solid var(--line); padding:26px 0 40px; color:var(--mist); font-size:14.5px; }
+  footer a { color:var(--mist); }
+  .dot { opacity:.5; padding:0 6px; }
+</style>
+</head>
+<body>
+<nav><div class="wrap nav-in">
+  <a class="brand" href="/">
+    <svg viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><path fill="#00C08B" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+    trekov
+  </a>
+  <a href="/app/" style="font-size:15px;font-weight:600;text-decoration:none">Open the app</a>
+</div></nav>
+<main class="wrap">
+<h1>Get Trekov</h1>
+<p class="when">Android 2.10 · iPhone through your browser</p>
+
+<p class="lede">One map for your whole group, live — with the route, the stops and
+push-to-talk. Here is how to put it on your phone today.</p>
+
+<h2>Android</h2>
+<div class="card">
+  <p><strong>Download the app</strong> — 61 MB, Android 7 and newer.</p>
+  <p style="margin-top:14px">
+    <a href="/download/trekov-2.10.apk" download
+       style="display:inline-block;background:var(--brand);color:#07130F;font-weight:600;
+              padding:13px 22px;border-radius:999px;text-decoration:none">
+      Download Trekov 2.10 for Android
+    </a>
+  </p>
+  <p style="margin-top:16px">Your phone will ask whether to allow installing apps from your
+  browser — that warning is Android's standard one for anything not from the Play Store. Trekov
+  is signed by us, and the app updates itself after that.</p>
+  <ol>
+    <li>Tap the button above; the file lands in your Downloads.</li>
+    <li>Open it, and allow <em>Install unknown apps</em> for your browser when asked.</li>
+    <li>Install, then sign in.</li>
+  </ol>
+  <p class="when" style="margin:14px 0 0">Coming to Google Play. Already installed? The app keeps
+  itself up to date and will tell you when a new version is worth downloading.</p>
+</div>
+
+<h2>iPhone and iPad</h2>
+<div class="card">
+  <p>Apple only allows apps from the App Store, so there is nothing to download yet — Trekov is
+  on its way there. Until it lands, run it from Safari: it goes on your Home Screen with its own
+  icon, opens full screen, and works offline.</p>
+  <ol>
+    <li>Open <a href="/app/">trekov.com/app</a> in Safari.</li>
+    <li>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</li>
+  </ol>
+  <p>Everything works except notifications and tracking with the screen off — both need the
+  App Store version.</p>
+</div>
+
+<h2>Laptop</h2>
+<p>Nothing to install: <a href="/app/">trekov.com/app</a> is the whole app. Plan the trip on a
+big screen, and it is on your phone when you ride.</p>
+
+<h2>Is it safe?</h2>
+<p>The Android file is signed with our own key, so your phone can tell that an update really came
+from us. It asks for location (the map and the live group), the camera (photos you take at a
+place) and the microphone (push-to-talk) — nothing else, and each only when you use that part.
+What it keeps is written out in the <a href="/privacy/">privacy policy</a>.</p>
+</main>
+<footer><div class="wrap">
+  <a href="/">trekov.com</a> <span class="dot">·</span>
+  <a href="/privacy/">Privacy</a> <span class="dot">·</span>
+  <a href="/terms/">Terms</a> <span class="dot">·</span>
+  <a href="/delete-account/">Delete your account</a> <span class="dot">·</span>
+  <a href="mailto:trekonvibes@gmail.com">trekonvibes@gmail.com</a>
+</div></footer>
+</body>
+</html>

@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;self&#39; https://maps.googleapis.com https://*.gstatic.com https://checkout.razorpay.com &#39;unsafe-eval&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://fonts.googleapis.com; font-src &#39;self&#39; data: https://fonts.gstatic.com; img-src &#39;self&#39; data: blob: https:; connect-src &#39;self&#39; https://jqvesreqazrympexqqmt.supabase.co wss://jqvesreqazrympexqqmt.supabase.co https://*.googleapis.com https://*.gstatic.com https://*.google.com https://tiles.openfreemap.org https://router.project-osrm.org https://*.razorpay.com data: blob:; worker-src &#39;self&#39; blob:; child-src &#39;self&#39; blob:; frame-src &#39;self&#39; https://*.google.com https://api.razorpay.com https://checkout.razorpay.com; media-src &#39;self&#39; data: blob:; object-src &#39;none&#39;; base-uri &#39;self&#39;; form-action &#39;self&#39;">
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="theme-color" content="#0B0F0E" />
+<title>Trekov — ride together, live</title>
+<meta name="description" content="Group rides on one live map: the whole group on one route, one-tap STOP, WAIT and LET'S GO alerts, push-to-talk, and turn-by-turn navigation with live traffic." />
+<meta property="og:site_name" content="Trekov" />
+<meta property="og:title" content="Trekov — ride together, live" />
+<meta property="og:description" content="One route for your whole group, everyone live on one map — one-tap STOP, WAIT and LET'S GO alerts, push-to-talk and turn-by-turn navigation." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://trekov.com" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="og:image" content="https://trekov.com/og.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:image" content="https://trekov.com/og.jpg" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0B0F0E;
+    --surface: #121917;
+    --raised: #18211E;
+    --line: #1F2C28;
+    --brand: #00C08B;
+    --brand-lt: #3DDC97;
+    --sun: #FFB33E;
+    --text: #EEF3F1;
+    --mist: #8FA39C;
+    --wrap: 1120px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--ink); color: var(--text);
+    font: 400 17px/1.6 Outfit, ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { width: min(100% - 44px, var(--wrap)); margin-inline: auto; }
+
+  /* ---------------------------------------------------------------- nav -- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--ink) 82%, transparent);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-in { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-size: 25px; font-weight: 600; letter-spacing: -.035em; text-decoration: none; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 999px; padding: 12px 22px;
+    font-weight: 600; font-size: 15px; text-decoration: none;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--brand); color: var(--ink); }
+  .btn-primary:hover { background: var(--brand-lt); }
+  .btn-ghost { border-color: var(--line); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
+  .btn-sm { padding: 9px 17px; font-size: 14px; }
+  .nav-cta { display: flex; gap: 10px; }
+  /* The smallest phones: Sign in is also in the hero, so the nav keeps Sign up. */
+  @media (max-width: 360px) {
+    .brand { font-size: 21px; gap: 7px; }
+    .brand svg { width: 22px; height: 22px; }
+    .nav-cta .btn-ghost { display: none; }
+  }
+
+  /* -------------------------------------------------------------- hero -- */
+  header.hero { position: relative; overflow: hidden; padding: clamp(64px, 10vw, 132px) 0 0; }
+  header.hero::before {
+    content: ""; position: absolute; inset: -30% 0 auto 50%;
+    width: 1000px; height: 700px; translate: -50% 0;
+    background: radial-gradient(closest-side, rgba(0,192,139,.20), transparent 72%);
+    pointer-events: none;
+  }
+  .hero-in { position: relative; display: grid; gap: 60px; grid-template-columns: 1fr; align-items: center; }
+  @media (min-width: 940px) { .hero-in { grid-template-columns: 1.06fr .94fr; gap: 40px; } }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brand-lt); background: rgba(0,192,139,.10);
+    border: 1px solid rgba(0,192,139,.24); border-radius: 999px; padding: 7px 15px;
+  }
+  h1 {
+    margin: 22px 0 0; font-weight: 600; letter-spacing: -.038em;
+    font-size: clamp(2.7rem, 6.4vw, 4.6rem); line-height: 1.03;
+  }
+  h1 em { font-style: normal; color: var(--brand); }
+  .lede { margin: 22px 0 0; max-width: 33ch; font-size: clamp(17px, 2vw, 19.5px); color: var(--mist); }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+  .note { margin-top: 16px; font-size: 13.5px; color: var(--mist); }
+
+  /* Real screens from the app, not mock-ups (captured 2026-09-12). */
+  .screen .real { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+  @media (min-width: 1040px) { .grid.three { grid-template-columns: repeat(3, 1fr); } }
+  .tag { display: inline-block; margin-left: 8px; vertical-align: middle; font-size: 11px; font-weight: 600;
+         letter-spacing: .06em; text-transform: uppercase; color: var(--sun); background: rgba(255,179,62,.12);
+         border-radius: 999px; padding: 3px 8px; }
+  .alerts-row { display: flex; gap: 8px; margin-top: 14px; }
+  .alerts-row span { flex: 1; text-align: center; border-radius: 10px; padding: 8px 4px; font-weight: 700; font-size: 13px; letter-spacing: .04em; }
+  .dl-meta { font-size: 13px; color: var(--mist); }
+  /* On a phone the hero's own Download button is right there, and three buttons
+     in the bar squeezed Sign in and Sign up onto two lines each. */
+  @media (max-width: 560px) { .nav-dl { display: none; } }
+  .split { display: grid; gap: 48px; align-items: center; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .split { grid-template-columns: 1.05fr .95fr; gap: 64px; } }
+  .ticks { list-style: none; margin: 30px 0 0; padding: 0; display: grid; gap: 16px; }
+  .ticks li { position: relative; padding-left: 32px; color: var(--mist); font-size: 16.5px; }
+  .ticks li b { color: var(--text); font-weight: 600; }
+  .ticks li::before { content: ""; position: absolute; left: 0; top: 4px; width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(0,192,139,.14) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300C08B' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12 4 4 8-8'/%3E%3C/svg%3E") center / 13px no-repeat; }
+  .split .phones { perspective: none; }
+
+  /* ------------------------------------------------------------ phones -- */
+  .phones { display: flex; justify-content: center; gap: 20px; perspective: 1400px; }
+  .phone {
+    width: min(252px, 100%); flex: none; border-radius: 34px; padding: 8px;
+    background: linear-gradient(160deg, #29332F, #101614);
+    box-shadow: 0 40px 90px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .phone.tilt-l { transform: rotateY(11deg) rotateX(3deg) translateY(10px); }
+  .phone.tilt-r { transform: rotateY(-11deg) rotateX(3deg) translateY(-14px); }
+  @media (max-width: 720px) { .phone.tilt-l, .phone.tilt-r { transform: none; } .phone:nth-child(2) { display: none; } }
+  .screen {
+    background: var(--ink); border-radius: 27px; overflow: hidden;
+    font-size: 12px; line-height: 1.35; height: 466px; position: relative;
+  }
+  .sbar { display: flex; align-items: center; justify-content: space-between; padding: 11px 13px 9px; font-size: 10px; color: var(--mist); }
+  .sbar .brandmini { display: flex; align-items: center; gap: 5px; color: var(--text); font-weight: 600; font-size: 14px; letter-spacing: -.03em; }
+  .shot { width: 100%; aspect-ratio: 4/5; object-fit: cover; background: var(--raised); display: block; }
+  .who { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
+  .av { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: none; background: var(--raised); }
+  .who b { font-size: 11.5px; font-weight: 600; }
+  .who span { font-size: 10px; color: var(--mist); display: block; }
+  .placechip {
+    position: absolute; left: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 999px; padding: 6px 11px; font-size: 11px; font-weight: 500;
+  }
+  .placechip i { color: var(--mist); font-style: normal; font-weight: 400; }
+  .acts { display: flex; align-items: center; gap: 13px; padding: 10px 12px 4px; color: var(--mist); font-size: 11px; }
+  .savepill { margin-left: auto; display: flex; align-items: center; gap: 5px; background: var(--brand); color: var(--ink); font-weight: 600; border-radius: 999px; padding: 5px 11px; }
+  .cap { padding: 2px 12px 0; font-size: 11.5px; color: rgba(238,243,241,.9); }
+  .season { display: inline-flex; align-items: center; gap: 5px; margin: 8px 12px 0; font-size: 10px; color: var(--sun); background: rgba(255,179,62,.12); border-radius: 999px; padding: 4px 9px; }
+
+  .listhead { display: flex; align-items: baseline; justify-content: space-between; padding: 13px 14px 10px; border-bottom: 1px solid var(--line); }
+  .listhead h4 { margin: 0; font-size: 15px; font-weight: 600; }
+  .listhead span { font-size: 10px; color: var(--mist); }
+  .country { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--mist); padding: 14px 14px 8px; }
+  .row { display: flex; gap: 10px; margin: 0 12px 9px; padding: 9px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; }
+  .row img { width: 52px; height: 52px; border-radius: 11px; object-fit: cover; flex: none; background: var(--raised); }
+  .row b { display: block; font-size: 12px; font-weight: 600; }
+  .row small { display: block; font-size: 10px; color: var(--mist); }
+  .row .map { margin-left: auto; align-self: flex-end; font-size: 10px; color: var(--brand); font-weight: 600; }
+  .tabs { position: absolute; inset: auto 0 0; display: flex; justify-content: space-around; align-items: center; padding: 9px 0 11px; border-top: 1px solid var(--line); background: rgba(11,15,14,.94); backdrop-filter: blur(10px); font-size: 8.5px; color: var(--mist); }
+  .tabs div { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tabs .on { color: var(--brand); }
+  .fab { width: 34px; height: 34px; border-radius: 11px; background: var(--brand); color: var(--ink); display: grid; place-items: center; }
+
+  /* ----------------------------------------------------------- sections -- */
+  section { padding: clamp(74px, 10vw, 122px) 0; }
+  .kicker { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin: 0 0 14px; }
+  h2 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.9rem); font-weight: 600; letter-spacing: -.032em; line-height: 1.1; }
+  .sub { margin: 16px 0 0; max-width: 56ch; color: var(--mist); font-size: 17.5px; }
+
+  .steps { display: grid; gap: 22px; margin-top: 56px; grid-template-columns: 1fr; counter-reset: s; }
+  @media (min-width: 820px) { .steps { grid-template-columns: repeat(3, 1fr); gap: 26px; } }
+  .step { border-top: 2px solid var(--line); padding-top: 24px; counter-increment: s; transition: border-color .2s ease; }
+  .step:hover { border-color: var(--brand); }
+  .step::before { content: "0" counter(s); display: block; font-size: 13px; font-weight: 600; color: var(--brand); letter-spacing: .1em; margin-bottom: 12px; }
+  .step h3 { margin: 0 0 8px; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+  .step p { margin: 0; color: var(--mist); font-size: 16px; }
+
+  .grid { display: grid; gap: 18px; margin-top: 54px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 30px; transition: border-color .2s ease, transform .2s ease; }
+  .card:hover { border-color: rgba(0,192,139,.42); transform: translateY(-2px); }
+  .card h3 { margin: 16px 0 9px; font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+  .card p { margin: 0; color: var(--mist); font-size: 16px; }
+  .card .ic { width: 42px; height: 42px; border-radius: 12px; background: rgba(0,192,139,.11); color: var(--brand); display: grid; place-items: center; }
+
+  .band { border-block: 1px solid var(--line); background: var(--surface); }
+
+  /* -------------------------------------------------------- get the app -- */
+  .apps { display: grid; gap: 18px; margin-top: 48px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .apps { grid-template-columns: repeat(2, 1fr); } }
+  .app-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 28px; }
+  .app-card h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+  .app-card h3 svg { color: var(--brand); flex-shrink: 0; }
+  .app-card p { margin: 0; color: var(--mist); font-size: 15.5px; }
+  .app-card .btn { align-self: flex-start; }
+  .app-card ol { margin: 0; padding-left: 20px; color: var(--mist); font-size: 14.5px; }
+  .app-card ol li + li { margin-top: 4px; }
+  .app-card .fine { font-size: 13px; }
+  .app-card details { font-size: 12.5px; color: var(--mist); }
+  .app-card summary { cursor: pointer; }
+  .app-card code { display: block; margin-top: 6px; font-size: 11.5px; word-break: break-all; }
+  .status { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--mist); font-size: 13px; font-weight: 600; }
+  .pill.live { border-color: rgba(0,192,139,.45); color: var(--brand-lt); background: rgba(0,192,139,.10); }
+  .pill .d { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  /* -------------------------------------------------------------- form -- */
+  .signup { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; max-width: 480px; }
+  .signup input {
+    flex: 1 1 240px; min-width: 0; background: var(--raised); color: var(--text);
+    border: 1px solid var(--line); border-radius: 999px; padding: 13px 20px;
+    font: inherit; font-size: 15.5px; outline: none;
+  }
+  .signup input::placeholder { color: var(--mist); }
+  .signup input:focus { border-color: var(--brand); }
+  .form-msg { margin-top: 14px; font-size: 14.5px; color: var(--brand); min-height: 20px; }
+
+  footer { border-top: 1px solid var(--line); padding: 46px 0; }
+  .foot { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; color: var(--mist); font-size: 14px; }
+  .foot a { text-decoration: none; }
+  .foot a:hover { color: var(--brand); }
+  .dot { opacity: .4; margin: 0 8px; }
+
+  /* map + place-sheet mockups */
+  .mapmock { position: relative; height: 400px; overflow: hidden; background: #0E1413; }
+  .maptile { width: 100%; height: 100%; object-fit: cover; filter: brightness(.72) saturate(.85); }
+  .searchbar {
+    position: absolute; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; gap: 6px;
+    background: rgba(11,15,14,.9); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 12px; font-size: 10px; color: var(--mist); backdrop-filter: blur(8px);
+  }
+  .mpin { position: absolute; translate: -50% -100%; text-align: center; }
+  .mpin i {
+    display: block; width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--brand); background: #18211E center/cover no-repeat;
+    box-shadow: 0 5px 14px rgba(0,0,0,.7);
+  }
+  .mpin::after { content: ""; position: absolute; left: 50%; top: 32px; translate: -50% 0; border: 5px solid transparent; border-top-color: var(--brand); }
+  .mpin b {
+    position: absolute; top: -4px; right: -6px; background: var(--brand); color: var(--ink);
+    font-size: 8px; font-weight: 700; border-radius: 999px; min-width: 14px; height: 14px;
+    display: grid; place-items: center; padding: 0 3px;
+  }
+  .mpin u { display: block; margin-top: 8px; font-size: 9px; font-weight: 600; text-decoration: none; text-shadow: 0 1px 4px #000; white-space: nowrap; }
+  .mpin.saved i { border-color: var(--sun); }
+  .mpin.saved::after { border-top-color: var(--sun); }
+  .mpin.saved b { background: var(--sun); }
+
+  .sheettop { width: 100%; height: 108px; object-fit: cover; display: block; filter: brightness(.8); }
+  .sheet { padding: 12px 13px; }
+  .sheet h4 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+  .sheet small { color: var(--mist); font-size: 10px; }
+  .blurb { margin: 7px 0 0; font-size: 10.5px; color: rgba(238,243,241,.85); line-height: 1.4; }
+  .chips { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .chips .muted { font-size: 9.5px; color: var(--mist); }
+  .sheetbtns { display: flex; gap: 6px; margin-top: 10px; }
+  .sheetbtns span { flex: 1; text-align: center; border-radius: 999px; padding: 6px 0; font-size: 10px; font-weight: 600; }
+  .ghostpill { border: 1px solid var(--line); color: var(--mist); }
+  .segs { display: flex; gap: 4px; margin-top: 11px; }
+  .segs span { font-size: 10px; color: var(--mist); padding: 4px 9px; border-radius: 999px; }
+  .segs .on { background: var(--raised); color: var(--text); font-weight: 600; }
+  .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 10px; }
+  .thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: var(--raised); }
+</style>
+  <script type="module" crossorigin src="/assets/landing-CvEJYV_-.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/preload-helper-B8tWKQ1F.js">
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-in">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 64 64" width="26" height="26" aria-hidden="true"><defs><linearGradient id="n" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs><path fill="url(#n)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+      trekov
+    </a>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm nav-dl" href="/download/">Download</a>
+      <a class="btn btn-ghost btn-sm" href="/app/?auth=signin#profile">Sign in</a>
+      <a class="btn btn-primary btn-sm" href="/app/?auth=signup#profile">Sign up</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-in">
+    <div>
+      <span class="eyebrow">Android app out now · free until 31 October</span>
+      <h1>Ride <em>together</em>,<br />live.</h1>
+      <p class="lede">
+        One route for the whole group, and everyone on one map while you move. Tap STOP
+        and every phone in the group sounds it. Hold to talk. Nobody gets left at a turn.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="/download/">Download for Android</a>
+        <a class="btn btn-ghost" href="/app/?auth=signup#profile">Use it in your browser</a>
+      </div>
+      <p class="note">Trekov 2.10 for Android · 61 MB · iPhone: add it from Safari today, App Store coming soon.</p>
+      <p class="note"><b style="color:var(--text)">Pre-release offer:</b> everything is free until 31 October 2026 — nothing to pay, no card needed.</p>
+    </div>
+
+    <div class="phones">
+      <div class="phone tilt-l">
+        <div class="screen">
+          <img class="real" src="/shots/ride-live.jpg" width="526" height="1040"
+               alt="A Ladakh group ride navigating to Pangong Tso: eight riders live on a satellite map, with STOP, WAIT, LET'S GO and push-to-talk" />
+        </div>
+      </div>
+      <div class="phone tilt-r">
+        <div class="screen">
+          <img class="real" src="/shots/trip.jpg" width="526" height="1040"
+               alt="The Ladakh Ride itinerary: dates, notes, and three stops from Pangong Tso to Tso Moriri with the distance and time between them" />
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">How it works</p>
+    <h2>Plan it. Bring the crew.<br />Ride it live.</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Plan the route</h3>
+        <p>Build a trip from real places, in the order you will ride them. Trekov gives the distance and time
+          between every stop — and the fuel, food, stays and tolls along the way.</p>
+      </div>
+      <div class="step">
+        <h3>Bring your crew</h3>
+        <p>Invite riders by their handle, or open the ride so others can find it and ask to join. You approve
+          everyone, and pick a captain to lead.</p>
+      </div>
+      <div class="step">
+        <h3>Ride it live</h3>
+        <p>Everyone on one map with turn-by-turn navigation, one-tap alerts and push-to-talk — and the map
+          downloaded for the stretches with no signal.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap split">
+    <div>
+      <p class="kicker">The host runs the ride</p>
+      <h2>Nine on the road.<br />One list, one captain.</h2>
+      <p class="sub">Whoever creates the trip is the host. Everyone else joins because the host said yes — so the
+        live map only ever shows the people you are actually riding with.</p>
+      <ul class="ticks">
+        <li><b>Invite riders by their handle</b>, or share the trip as a link that opens even without the app.</li>
+        <li><b>Open the ride</b> so other riders can find it, then approve each one who asks to join.</li>
+        <li><b>Name a captain</b> for the group to follow — yourself, or any rider on the trip.</li>
+        <li><b>See who is sharing</b> their position, and hide yours from one person while the rest still see you.</li>
+      </ul>
+    </div>
+    <div class="phones">
+      <div class="phone">
+        <div class="screen">
+          <img class="real" src="/shots/riders.jpg" width="526" height="1040" loading="lazy"
+               alt="The Ladakh Ride rider list: the host as captain, eight riders sharing their location, and the ride set to Public" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <p class="kicker">Built for the road</p>
+    <h2>Everything a group ride needs,<br />on one screen.</h2>
+    <p class="sub">
+      A group chat full of "where are you?" does not work at 60 km/h. Trekov puts the route,
+      the riders and the conversation on the map you are already looking at.
+    </p>
+
+    <div class="grid three">
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.8-3 2.9-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M15.5 14.8c2.4.2 4 1.6 4.8 4.2"/></svg></div>
+        <h3>Everyone on one map</h3>
+        <p>See every rider live — where they are, which way they are heading and how fast — with the whole route drawn under them.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+        <h3>STOP · WAIT · LET'S GO</h3>
+        <p>One tap and every phone in the group flashes full screen, buzzes and sounds a loud alarm — made to cut through wind and a helmet.</p>
+        <div class="alerts-row" aria-hidden="true">
+          <span style="background:#FF5C7A;color:#fff">STOP</span>
+          <span style="background:#FFB33E;color:#0B0F0E">WAIT</span>
+          <span style="background:#00C08B;color:#0B0F0E">GO</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></div>
+        <h3>Push-to-talk</h3>
+        <p>Hold the button and say it to the whole group. Nothing is sent unless you are holding it, and nothing is recorded.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.3 2.4 3.5 5.2 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.2-3.5-8.5s1.2-6.1 3.5-8.5Z"/></svg></div>
+        <h3>Open rides <span class="tag">New</span></h3>
+        <p>Make a group trip public and other riders can find it and ask to join. You approve each one — until then they see only the title, the dates and where it starts and ends.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9Z"/></svg></div>
+        <h3>A host and a captain</h3>
+        <p>Whoever creates the ride runs it: adds and removes riders, and names a captain for the group to follow. A rider asking to join reaches the host's phone even with Trekov closed.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></div>
+        <h3>Navigation that stays on</h3>
+        <p>Turn-by-turn with the group still on the map. The screen stays awake, it warns you when you leave the route, and a dropped signal never wipes the line you are following.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></div>
+        <h3>Maps that work offline</h3>
+        <p>Download the route before you go, so the map and your position still work in the valleys where the network gives up.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/></svg></div>
+        <h3>Find where to go</h3>
+        <p>Stays, food, fuel, garages, rentals and things to see near you or your route — with photos from riders who were actually there, and their profiles one tap away.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></div>
+        <h3>Your location, your rules</h3>
+        <p>Your live position goes only to the people on your trip, and is never stored on our servers. Switch sharing off, or hide from one rider while the rest still see you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <p class="kicker">Get the app</p>
+    <h2>On your phone, before the stores.</h2>
+    <p class="sub">
+      Trekov is on its way to Google Play and the App Store. Until then, download it straight for
+      Android, or put it on your iPhone Home Screen from Safari.
+    </p>
+
+    <div class="apps">
+      <div class="app-card">
+        <h3><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg> Android</h3>
+        <div class="status">
+          <span class="pill live"><span class="d"></span>App · Download now</span>
+          <span class="pill"><span class="d"></span>Google Play · Coming soon</span>
+        </div>
+        <p>The full app, signed by us — live group map, alerts, push-to-talk, notifications and offline maps.
+          It keeps itself up to date once installed.</p>
+        <ol>
+          <li>Download the app — Android 7 or newer.</li>
+          <li>Open the file and allow your browser to install it, then sign in.</li>
+        </ol>
+        <a class="btn btn-primary" href="/download/trekov-2.10.apk" download>Download Trekov 2.10</a>
+        <p class="dl-meta">61 MB · <a href="/download/" style="color:var(--brand)">Step-by-step install guide</a></p>
+      </div>
+
+      <div class="app-card">
+        <h3><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg> iPhone</h3>
+        <div class="status">
+          <span class="pill live"><span class="d"></span>Web app · Add now</span>
+          <span class="pill"><span class="d"></span>App Store · Coming soon</span>
+        </div>
+        <p>Apple only allows apps from the App Store, so there is nothing to download yet. Until it lands, run
+          Trekov from Safari — it goes on your Home Screen with its own icon.</p>
+        <ol>
+          <li>Open <a href="/app/?install-help" style="color:var(--brand)">trekov.com/app</a> in Safari.</li>
+          <li>Tap Share, then Add to Home Screen.</li>
+        </ol>
+        <a class="btn btn-ghost" href="/app/?install-help">Open Trekov and add it</a>
+        <p class="dl-meta">Notifications and screen-off tracking arrive with the App Store version.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="join">
+  <div class="wrap">
+    <p class="kicker">Sign up</p>
+    <h2>Your map, on every device.</h2>
+    <p class="sub">
+      Free for everyone until 31 October 2026. Enter your email and we'll send a one-time link — no password to set. Your trips,
+      saved places and photos then sync between your phone and laptop, and friends you
+      invite can ride along on your trips.
+    </p>
+
+    <form class="signup" id="signup" novalidate>
+      <input type="email" name="email" id="email" placeholder="you@email.com" autocomplete="email" required aria-label="Your email" />
+      <button class="btn btn-primary" type="submit" id="signup-btn">Send sign-up link</button>
+    </form>
+    <p class="form-msg" id="msg" role="status"></p>
+    <p class="note">Already have an account? <a href="/app/?auth=signin#profile" style="color:var(--brand)">Sign in</a></p>
+    <p class="note">Run a stay, dhaba, garage or rental on a riding route? <a href="/app/#business" style="color:var(--brand)">List your business</a></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span class="brand" style="font-size:19px">
+      <svg viewBox="0 0 64 64" width="19" height="19" aria-hidden="true"><path fill="#00C08B" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+      trekov
+    </span>
+    <span>trekov.com <span class="dot">·</span> Made in India</span>
+    <span><a href="#download">Get the app</a> <span class="dot">·</span> <a href="/app/?auth=signin#profile">Sign in</a> <span class="dot">·</span> <a href="/download/">Download</a> <span class="dot">·</span> <a href="/privacy/">Privacy</a> <span class="dot">·</span> <a href="/terms/">Terms</a> <span class="dot">·</span> <a href="mailto:trekonvibes@gmail.com">Contact</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
