@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;self&#39; https://maps.googleapis.com https://*.gstatic.com https://checkout.razorpay.com &#39;unsafe-eval&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://fonts.googleapis.com; font-src &#39;self&#39; data: https://fonts.gstatic.com; img-src &#39;self&#39; data: blob: https:; connect-src &#39;self&#39; https://jqvesreqazrympexqqmt.supabase.co wss://jqvesreqazrympexqqmt.supabase.co https://*.googleapis.com https://*.gstatic.com https://*.google.com https://tiles.openfreemap.org https://elevation-tiles-prod.s3.amazonaws.com https://router.project-osrm.org https://*.razorpay.com data: blob:; worker-src &#39;self&#39; blob:; child-src &#39;self&#39; blob:; frame-src &#39;self&#39; https://*.google.com https://api.razorpay.com https://checkout.razorpay.com; media-src &#39;self&#39; data: blob:; object-src &#39;none&#39;; base-uri &#39;self&#39;; form-action &#39;self&#39;">
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="theme-color" content="#0B0F0E" />
+
+    <title>Join the trip — Trekov</title>
+    <meta name="description" content="Someone invited you on a trip planned in Trekov. Open it to see the route and follow along live." />
+
+    <!-- The preview card in the chat where this was pasted. -->
+    <meta property="og:title" content="Join the trip on Trekov" />
+    <meta property="og:description" content="See the route, the stops and everyone's position live." />
+    <meta property="og:image" content="https://trekov.com/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://trekov.com/og.jpg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Styles are inline rather than imported: this page is opened on mobile
+         data, often in a chat app's browser, and it has one job. It should
+         paint before a stylesheet round-trip. -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; min-height: 100dvh;
+        display: flex; align-items: center; justify-content: center;
+        padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+        background: #0B0F0E; color: #F4F7F5;
+        font-family: Outfit, ui-sans-serif, system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card { width: 100%; max-width: 420px; }
+      .brand { display: flex; align-items: center; gap: 9px; margin-bottom: 28px; }
+      .brand svg { width: 26px; height: 26px; }
+      .brand span { font-weight: 600; font-size: 22px; letter-spacing: -0.035em; }
+      .kicker {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+        color: #7C8B84; margin: 0 0 8px;
+      }
+      h1 { font-size: 26px; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 10px; }
+      .sub { color: #9AA8A1; font-size: 14px; line-height: 1.55; margin: 0 0 22px; }
+      .stops {
+        list-style: none; margin: 0 0 24px; padding: 14px 16px;
+        border: 1px solid #1E2724; border-radius: 16px; background: #111716;
+      }
+      .stops li { font-size: 13.5px; padding: 4px 0; color: #C9D4CE; }
+      .stops li b { color: #F4F7F5; font-weight: 600; }
+      .btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; padding: 15px 18px; border-radius: 999px;
+        font-family: inherit; font-size: 15px; font-weight: 600;
+        text-decoration: none; cursor: pointer; border: 1px solid transparent;
+        margin-bottom: 10px; transition: opacity .15s, border-color .15s, color .15s;
+      }
+      .btn:active { opacity: .82; }
+      .primary { background: #34D399; color: #06120D; }
+      .ghost { background: transparent; border-color: #1E2724; color: #C9D4CE; }
+      .ghost:hover { border-color: #34D399; color: #34D399; }
+      .note {
+        font-size: 12px; line-height: 1.6; color: #7C8B84;
+        margin: 18px 0 0; padding-top: 18px; border-top: 1px solid #1E2724;
+      }
+      .note b { color: #C9D4CE; font-weight: 600; }
+      .warn {
+        display: none; gap: 10px; align-items: flex-start;
+        font-size: 13px; line-height: 1.5; color: #FCD9A8;
+        background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.28);
+        border-radius: 14px; padding: 12px 14px; margin-bottom: 18px;
+      }
+      [hidden] { display: none !important; }
+      .access { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 10px; padding: 5px 11px;
+                border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid; }
+      .access.public  { color: #3DDC97; border-color: rgba(0,192,139,.45); background: rgba(0,192,139,.10); }
+      .access.private { color: #C9D6D1; border-color: #1F2C28; background: #121917; }
+    </style>
+    <script type="module" crossorigin src="/assets/invite-D5qW3dLW.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/preload-helper-B8tWKQ1F.js">
+    <link rel="modulepreload" crossorigin href="/assets/supabase-Cy140slD.js">
+    <link rel="modulepreload" crossorigin href="/assets/share-Dy4tC87V.js">
+  </head>
+  <body>
+    <main class="card">
+      <div class="brand">
+        <!-- The Trekov mark: the pin with the mountains, as on the app icon and the site. -->
+        <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="tkg" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs><path fill="url(#tkg)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+        <span>trekov</span>
+      </div>
+
+      <p class="kicker" id="kicker">You've been invited</p>
+      <p class="access" id="access" hidden></p>
+      <h1 id="title">Join the trip</h1>
+      <p class="sub" id="sub">Open it to see the route, the stops and where everyone is.</p>
+
+      <ul class="stops" id="stops" hidden></ul>
+
+      <div class="warn" id="warn">
+        <span aria-hidden="true">↗</span>
+        <span id="warn-text"></span>
+      </div>
+
+      <a class="btn primary" id="open" href="/app/">Open in Trekov</a>
+      <button class="btn ghost" id="install" hidden>Install Trekov</button>
+      <a class="btn ghost" id="store" hidden>Get the app</a>
+      <a class="btn ghost" id="browser" href="/app/" hidden>Continue in browser</a>
+
+      <p class="note" id="note">
+        No account needed — the invite carries the whole itinerary with it.
+      </p>
+    </main>
+
+  </body>
+</html>

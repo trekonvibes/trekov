@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-DEO3nNaf.js","assets/share-Dy4tC87V.js","assets/preload-helper-B8tWKQ1F.js","assets/supabase-Cy140slD.js"])))=>i.map(i=>d[i]);
+import{_ as r}from"./preload-helper-B8tWKQ1F.js";import{r as t}from"./share-Dy4tC87V.js";import{f as e}from"./synapse-akrKn89j.js";import"./supabase-Cy140slD.js";const a=t("Geolocation",{web:()=>r(()=>import("./web-DEO3nNaf.js"),__vite__mapDeps([0,1,2,3])).then(o=>new o.GeolocationWeb)});e();export{a as Geolocation};

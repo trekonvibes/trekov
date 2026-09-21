@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-B-tsnKca.js","assets/share-Dy4tC87V.js","assets/preload-helper-B8tWKQ1F.js","assets/supabase-Cy140slD.js"])))=>i.map(i=>d[i]);
+import{_ as r}from"./preload-helper-B8tWKQ1F.js";import{r as o}from"./share-Dy4tC87V.js";import"./supabase-Cy140slD.js";const _=o("KeepAwake",{web:()=>r(()=>import("./web-B-tsnKca.js"),__vite__mapDeps([0,1,2,3])).then(e=>new e.KeepAwakeWeb)});export{_ as KeepAwake};

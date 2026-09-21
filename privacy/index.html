@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy — Trekov</title>
+<meta name="description" content="What Trekov keeps, who can see it, and how to delete all of it." />
+<link rel="icon" href="/favicon.svg" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:#0B0F0E; --surface:#121917; --line:#1F2C28; --brand:#00C08B;
+    --text:#EEF3F1; --mist:#8FA39C; --wrap:760px;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ink); color:var(--text);
+         font:400 17px/1.65 Outfit, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color: var(--brand); }
+  .wrap { width:min(100% - 40px, var(--wrap)); margin-inline:auto; }
+  nav { border-bottom:1px solid var(--line); }
+  .nav-in { display:flex; align-items:center; justify-content:space-between; height:66px; }
+  .brand { display:flex; align-items:center; gap:9px; font-size:22px; font-weight:600; letter-spacing:-.035em; text-decoration:none; color:var(--text); }
+  main { padding:44px 0 80px; }
+  h1 { font-size:clamp(2rem,5vw,2.7rem); line-height:1.1; letter-spacing:-.035em; margin:0 0 10px; }
+  .when { color:var(--mist); font-size:14px; margin:0 0 34px; }
+  h2 { font-size:1.22rem; letter-spacing:-.02em; margin:38px 0 10px; }
+  h3 { font-size:1rem; margin:22px 0 6px; }
+  p, li { color:#D7E2DE; }
+  ul { padding-left:20px; }
+  li { margin:7px 0; }
+  .lede { font-size:19px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin:22px 0; }
+  .card p:first-child, .card ul:first-child { margin-top:0; }
+  .card p:last-child, .card ul:last-child { margin-bottom:0; }
+  table { width:100%; border-collapse:collapse; margin:16px 0; font-size:15.5px; }
+  th, td { text-align:left; vertical-align:top; padding:10px 12px; border-bottom:1px solid var(--line); }
+  th { color:var(--mist); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+  footer { border-top:1px solid var(--line); padding:26px 0 40px; color:var(--mist); font-size:14.5px; }
+  footer a { color:var(--mist); }
+  .dot { opacity:.5; padding:0 6px; }
+</style>
+</head>
+<body>
+<nav><div class="wrap nav-in">
+  <a class="brand" href="/">
+    <svg viewBox="0 0 64 64" width="22" height="22" aria-hidden="true"><path fill="#00C08B" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+    trekov
+  </a>
+  <a href="/app/" style="font-size:15px;font-weight:600;text-decoration:none">Open the app</a>
+</div></nav>
+<main class="wrap">
+<h1>Privacy</h1>
+<p class="when">Last updated 14 September 2026</p>
+
+<p class="lede">Trekov is a travel app: a map, your trips, and — when you ride as a group —
+everyone on one screen while you move. This page says exactly what it keeps, what other
+people can see, and how to get rid of all of it.</p>
+
+<div class="card">
+  <p><strong>The short version.</strong> Your live location is never stored on our servers — it
+  goes straight to the people on your trip while you are navigating, and stops when you do.
+  We do not sell location data, we never read your contacts, and there are no advertising
+  trackers in the app.</p>
+</div>
+
+<h2>What Trekov keeps</h2>
+<table>
+  <tr><th>What</th><th>Why</th></tr>
+  <tr><td>Your email address</td><td>It is how you sign in and how we can reach you about your account.</td></tr>
+  <tr><td>Your handle, name, short bio and profile photo</td><td>So riders on a trip know who you are. These are public to anyone signed in to Trekov.</td></tr>
+  <tr><td>Photos you post, with their caption, tags and — if you chose to attach it — where the photo was taken</td><td>They appear on the place you posted them to, and on your profile. These are public.</td></tr>
+  <tr><td>Places you save, reviews and ratings you write, likes and comments</td><td>Your shortlist and your contributions to a place.</td></tr>
+  <tr><td>Your trips: title, dates, stops, your notes and any bookings you add</td><td>This is the trip itself. It is private to you and the riders you invite.</td></tr>
+  <tr><td>Who is on a trip, and whether an invite is pending, accepted or declined</td><td>So the host can manage the group.</td></tr>
+  <tr><td>A notification token for each phone you sign in on</td><td>So an invite or a rider asking to join can reach your phone. It is write-only: the app can save and delete it but never read it back.</td></tr>
+  <tr><td>A random device id stored on your phone</td><td>It keeps an account signed in on one device at a time. It is not an advertising id and is not shared.</td></tr>
+  <tr><td>The internet (IP) address of failed sign-in attempts</td><td>To slow down anyone trying to guess passwords. Kept for a short time, then deleted.</td></tr>
+  <tr><td>Reports you make about other people's posts, comments or profiles, and the people you block</td><td>So we can review what was reported, and so blocked people's content stays hidden from you.</td></tr>
+</table>
+
+<h2>Live location and voice</h2>
+<p>While you are navigating a group trip with sharing switched on, your position is sent
+directly to the other riders on that trip through a private channel. It is not written to a
+database, not kept in a history, and not visible to anyone who is not on the trip.
+Push-to-talk audio travels between riders' phones and is never recorded.</p>
+<ul>
+  <li><strong>The master switch</strong> — turn sharing off and nothing about your position leaves the phone. You still see everyone else.</li>
+  <li><strong>Per person</strong> — you can hide from one rider while the rest of the group still sees you. That rider's app is told not to show you; it cannot be fully enforced on someone else's phone, so switch sharing off if it matters.</li>
+  <li>Close the trip, and the sharing stops.</li>
+</ul>
+
+<h2>Who can see what</h2>
+<ul>
+  <li><strong>Public:</strong> your handle, name, bio, profile photo and the photos you post.</li>
+  <li><strong>The trip only:</strong> a trip's stops, your notes, bookings, live positions and voice — the host and the riders who have accepted, nobody else.</li>
+  <li><strong>An open ride:</strong> if a host marks a group trip public, other riders can find it in a list. They see only the title, the dates, where it starts and ends, how many are going and the host's handle — never the notes, the bookings or anyone's position. The host approves each rider before they see any more.</li>
+  <li><strong>Nobody but you:</strong> your email address, your saved places and your device id.</li>
+</ul>
+
+<h2>Companies that handle your data for us</h2>
+<ul>
+  <li><strong>Supabase</strong> — the database, sign-in, photo storage and the private channels group trips use.</li>
+  <li><strong>Google Maps Platform</strong> — the map, searching for places, place details and directions. Your search terms and the map area you are looking at reach Google as part of that.</li>
+  <li><strong>Google Navigation SDK</strong> (Android app) — turn-by-turn navigation. While you navigate, your location, route and destination go to Google to calculate the route, follow traffic and guide you, under Google's own terms, which you accept the first time you navigate.</li>
+  <li><strong>OpenFreeMap and OpenStreetMap</strong> — the map tiles Trekov downloads for offline use.</li>
+  <li><strong>Project OSRM</strong> — route calculation.</li>
+  <li><strong>Firebase Cloud Messaging (Google)</strong> — delivering notifications to your phone.</li>
+  <li><strong>Razorpay</strong> — payments, if and when paid plans are switched on. Card details go to Razorpay and never to us.</li>
+</ul>
+<p>They act on our instructions for these purposes. We do not sell your data, and we do not
+share it for advertising.</p>
+
+<h2>The permissions the app asks for</h2>
+<ul>
+  <li><strong>Location</strong> — to show where you are on the map, to navigate, and to share your position with your group while you ride. Trekov does not ask for background location: it uses a foreground service, with a notification you can see, only while a live trip is running.</li>
+  <li><strong>Camera</strong> — to take a photo to post. Only when you open the camera.</li>
+  <li><strong>Microphone</strong> — push-to-talk on a group trip. Only while you hold the button. Voice goes directly between the riders' phones and is not recorded or stored; to connect them, the phones see each other's internet (IP) address, and Google's STUN service helps them find each other.</li>
+  <li><strong>Notifications</strong> — invites, riders asking to join your trip, and alerts from a trip you are on.</li>
+</ul>
+<p>You can refuse any of them, or take them back later in your phone's settings. The rest of
+the app keeps working.</p>
+
+<h2>Keeping and deleting</h2>
+<p>What you post stays until you delete it or delete your account. Deleting your account
+removes your profile, your photos and their files, your posts, reviews, likes, comments,
+saved places, your trips and your notification tokens, and your sign-in itself. It cannot be
+undone. You can do it in the app under <em>You → Delete account</em>, or follow
+<a href="/delete-account/">the instructions here</a>.</p>
+<p>Backups are kept for a short period by our hosting provider and age out on their own.
+Records we must keep for tax or legal reasons — payment receipts, for example — are kept for
+as long as the law requires.</p>
+
+<h2>Children</h2>
+<p>Trekov is for people aged 18 and over, and we do not knowingly keep data about anyone younger.
+If you believe a child has an account, write to us and we will remove it.</p>
+
+<h2>Your choices</h2>
+<p>You can see and edit your profile in the app, export nothing you did not put in, and delete
+everything at any time. If you want a copy of what is held about you, or want something
+corrected, write to <a href="mailto:trekonvibes@gmail.com">trekonvibes@gmail.com</a> and we
+will answer within 30 days.</p>
+
+<h2>Changes</h2>
+<p>If this page changes in a way that matters, the date at the top changes and the app will
+say so.</p>
+
+<h2>Who runs Trekov</h2>
+<div class="card">
+  <p>Trekov is built and run by <strong>Punitkumar</strong><br>
+  A-508 Sun South Trade Center, South Bopal Main Road, Ahmedabad, Gujarat 380058, India</p>
+  <p><strong>Grievance officer:</strong> Punitkumar ·
+  <a href="mailto:trekonvibes@gmail.com">trekonvibes@gmail.com</a><br>
+  Write with <em>Grievance</em> in the subject and we will acknowledge within 24 hours and
+  settle it within 15 days.</p>
+</div>
+
+</main>
+<footer><div class="wrap">
+  <a href="/">trekov.com</a> <span class="dot">·</span>
+  <a href="/privacy/">Privacy</a> <span class="dot">·</span>
+  <a href="/terms/">Terms</a> <span class="dot">·</span>
+  <a href="/delete-account/">Delete your account</a> <span class="dot">·</span>
+  <a href="mailto:trekonvibes@gmail.com">trekonvibes@gmail.com</a>
+</div></footer>
+</body>
+</html>
