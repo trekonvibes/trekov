@@ -32,7 +32,20 @@ function PasswordInput({ value, onChange, autoComplete, placeholder }) {
   )
 }
 
-export default function AuthScreen({ mode, notice = '', onModeChange, onClose }) {
+// Riders post photos, reviews and comments, so joining means agreeing to the
+// rules on them — the App Store asks for exactly this (guideline 1.2).
+function Agreement() {
+  return (
+    <p className="text-[11px] text-mist leading-relaxed text-center">
+      By continuing you agree to Trekov's{' '}
+      <a href="https://trekov.com/terms/" target="_blank" rel="noreferrer" className="underline">Terms</a>
+      {' '}— no abusive, sexual or illegal content, and you must be 18 or over — and its{' '}
+      <a href="https://trekov.com/privacy/" target="_blank" rel="noreferrer" className="underline">Privacy policy</a>.
+    </p>
+  )
+}
+
+export default function AuthScreen({ mode, notice = '', linkError = '', required = false, onModeChange, onClose }) {
   const [handle, setHandle] = useState('')
   const [handleFree, setHandleFree] = useState(null)   // null = unknown/checking
   const [email, setEmail] = useState('')
@@ -68,6 +81,7 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
     if (!looksLikeEmail(email)) return setError('That email address looks incomplete.')
     if (password.length < PASSWORD_MIN) return setError(`Use a password of at least ${PASSWORD_MIN} characters.`)
     run(async () => {
+      sessionStorage.setItem('trekov.takeover', '1')   // this device becomes the account's one device
       const { needsConfirmation } = await signUpWithPassword({ email, password, handle })
       if (needsConfirmation) setSent({ kind: 'confirm', to: email.trim() })
       // Otherwise the session arrived and the app closes this screen.
@@ -78,7 +92,7 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
     e.preventDefault()
     if (!identifier.trim()) return setError('Enter your username or email.')
     if (!password) return setError('Enter your password.')
-    run(() => signInWithPassword(identifier, password))
+    run(() => { sessionStorage.setItem('trekov.takeover', '1'); return signInWithPassword(identifier, password) })
   }
 
   const emailLink = (e) => {
@@ -91,10 +105,15 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
 
   return (
     <div className="fixed inset-0 z-[1500] bg-black flex justify-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="tk-shell h-full w-full flex flex-col bg-ink sm:border-x sm:border-line">
+      <div className="tk-shell h-full w-full flex flex-col bg-ink sm:border-x sm:border-line pt-safe px-safe">
         <header className="flex items-center justify-between px-4 h-14 border-b border-line">
           <Wordmark size={16} />
-          <button onClick={onClose} aria-label="Close" className="text-mist hover:text-white p-1 text-lg leading-none">✕</button>
+          {required ? (
+            // The app needs an account, so there is nothing to close back to.
+            <a href="/" className="text-xs text-mist hover:text-white">About Trekov</a>
+          ) : (
+            <button onClick={onClose} aria-label="Close" className="grid place-items-center size-10 -mr-2 text-mist hover:text-white text-lg leading-none">✕</button>
+          )}
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 pt-10 pb-10 max-w-md w-full mx-auto">
@@ -120,12 +139,18 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
             </>
           ) : (
             <>
-              {notice && (
+              {linkError && (
                 <p className="mb-6 rounded-xl border border-rose/40 bg-rose/10 px-3.5 py-2.5 text-sm text-rose">
-                  That sign-in link didn't work ({notice}). Sign in below or send yourself a fresh link.
+                  That sign-in link didn't work ({linkError}). Sign in below or send yourself a fresh link.
                 </p>
               )}
+              {notice && (
+                <p className="mb-6 rounded-xl border border-sun/40 bg-sun/10 px-3.5 py-2.5 text-sm text-sun">{notice}</p>
+              )}
               <h1 className="text-2xl font-semibold">{title}</h1>
+              {required && !notice && !linkError && (
+                <p className="text-sm text-mist mt-2">Sign in or create an account to use Trekov.</p>
+              )}
 
               {mode === 'signup' && (
                 <form onSubmit={signUp} className="mt-6 space-y-3" noValidate>
@@ -149,6 +174,7 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
                   <button type="submit" disabled={busy} className={primary}>
                     {busy ? 'Creating…' : 'Create account'}
                   </button>
+                  <Agreement />
                 </form>
               )}
 
@@ -177,6 +203,7 @@ export default function AuthScreen({ mode, notice = '', onModeChange, onClose })
                   <button type="submit" disabled={busy} className={primary}>
                     {busy ? 'Sending…' : 'Send sign-in link'}
                   </button>
+                  <Agreement />
                 </form>
               )}
 

@@ -3,7 +3,10 @@
 import path from 'node:path'
 import { connect, TMP } from './cdp.mjs'
 
-const APP = 'http://localhost:5173/app/'
+// A local copy with no account server (VITE_SUPABASE_URL empty — the
+// 'local-only-no-accounts' launch config): no sign-in wall, riders simulated in-page.
+const APP = process.env.APP_URL || 'http://localhost:5173/app/'
+const SITE = APP.replace(/app\/$/, '')
 const c = await connect()
 const { ev, wait, shot, record } = c
 
@@ -19,6 +22,15 @@ const GEO = `(() => {
     clearWatch: (id) => clearInterval(watchers.get(id)),
   }
   Object.defineProperty(Navigator.prototype, 'geolocation', { configurable: true, get: () => geo })
+  // The app asks the browser whether location is allowed (LocationGate); a
+  // headless browser answers "denied" whatever it's granted, so answer "granted".
+  const perms = navigator.permissions
+  if (perms?.query) {
+    const query = perms.query.bind(perms)
+    perms.query = (d) => d && d.name === 'geolocation'
+      ? Promise.resolve({ state: 'granted', onchange: null, addEventListener() {}, removeEventListener() {} })
+      : query(d)
+  }
 })()`
 
 const HELPERS = `(() => {
@@ -84,6 +96,7 @@ const scenes = {
     await ev(`localStorage.setItem('trekov.state.v2', ${JSON.stringify(JSON.stringify(state))});
       localStorage.setItem('trekov.vehicle', 'classic'); localStorage.setItem('trekov.vehicleColour', 'orange');
       localStorage.setItem('trekov.navMapType', 'hybrid'); localStorage.setItem('trekov.groupCardHidden', 't_ad_ladakh');
+      localStorage.setItem('trekov.locationOk', '1'); localStorage.setItem('trekov.cameraStep', '1'); localStorage.setItem('trekov.installBanner', 'done');
       setTimeout(() => location.reload(), 10); 'seeded'`)
     await wait(7000)
     console.log(await ev(`JSON.stringify({ vis: document.visibilityState, w: innerWidth, h: innerHeight, google: !!window.google?.maps, trips: JSON.parse(localStorage.getItem('trekov.state.v2')).trips.length })`))
@@ -94,7 +107,7 @@ const scenes = {
   async navprep() {
     await scenes.reset()
     await ev(`location.hash = '#trips'`); await wait(1500)
-    await ev(`__click(/Go live with the group/i)`)
+    await ev(`__click(/Go live with the group|^Go live$/i)`)
     let n = 0
     for (let i = 0; i < 30 && n < 100; i++) { await wait(1000); n = await ev('window.__initRoute()') }
     console.log('route points', n)
@@ -102,19 +115,17 @@ const scenes = {
     await ev(`(async () => {
       const D0 = window.__cum[70] || 4000
       window.__drive(D0, 14)
-      const { joinParty, realtimeTransport } = await import('/src/lib/party.js')
-      const { supabase } = await import('/src/lib/supabase.js')
-      const { createClient } = await import('/node_modules/.vite/deps/@supabase_supabase-js.js')
+      const { joinParty } = await import('/src/lib/party.js')
       const crew = ${JSON.stringify(CREW)}
       ;(window.__riders || []).forEach((r) => r.party.leave()); clearInterval(window.__ridersT)
-      window.__riders = crew.map((r) => ({ ...r, party: joinParty('t_ad_ladakh', { id: r.id, name: r.name }, () => {},
-        realtimeTransport(createClient(supabase.supabaseUrl, supabase.supabaseKey, { auth: { persistSession: false, autoRefreshToken: false, storageKey: 'ad-' + r.id } }))) }))
+      // No account server: the default transport is the in-page BroadcastChannel.
+      window.__riders = crew.map((r) => ({ ...r, party: joinParty('t_ad_ladakh', { id: r.id, name: r.name }, () => {}) }))
       const tick = () => { for (const r of window.__riders) { const p = window.__atD(window.__D + r.off); r.party.update({ lat: p.lat, lng: p.lng }, { vehicle: r.model === 'suv' ? 'car' : 'bike', model: r.model, colour: 'green', heading: p.heading, moving: true }) } }
       tick(); window.__ridersT = setInterval(tick, 250)
       return D0
     })()`)
     await ev(`location.hash = '#trips'`); await wait(1200)
-    await ev(`__click(/Go live with the group/i)`); await wait(9000)
+    await ev(`__click(/Go live with the group|^Go live$/i)`); await wait(9000)
     await shot(path.join(TMP, 'h-nav.png'))
     console.log(await ev(`document.querySelectorAll('.tk-mate').length + ' mates'`))
   },
@@ -203,6 +214,49 @@ const scenes = {
     console.log('tap2', await ev(tapNorth)); await wait(2200)
     await record.stop()
   },
+  // Invites with a status: pending ones turning to accepted (dev-only hook in lib/people.js).
+  async invite2() {
+    // Reload inside this run so the fake GPS (added per run) is on the page;
+    // the demo trip is in localStorage, so nothing is lost.
+    await c.send('Page.reload'); await wait(6500); await ev(HELPERS)
+    await ev(`(() => {
+      const crew = ${JSON.stringify(CREW)}
+      window.__adStatus = Object.fromEntries(crew.map((r, i) => [r.id, i < 2 ? 'accepted' : 'pending']))
+      window.__adDemo = { ...(window.__adDemo || {}), tripInvites: async () => Object.fromEntries(Object.entries(window.__adStatus).map(([id, status]) => [id, { status }])) }
+      location.hash = '#trips'; return 'ok' })()`); await wait(1200)
+    // The trip scene leaves the trip's page open; only open it if it isn't.
+    await ev(`(() => { if (/Travelling with/i.test(document.body.innerText)) return 'already open'; [...document.querySelectorAll('button')].find((b) => /^Ladakh Ride/.test(b.innerText.trim()) && !/Go live|Start trip/i.test(b.innerText)).click(); return 'opened' })()`); await wait(3500)
+    await ev(`(() => { const h = [...document.querySelectorAll('h2, h3, p, span')].find((e) => /^Travelling with/i.test(e.innerText.trim())); const sc = __scroller(); sc.scrollTop += h.getBoundingClientRect().top - sc.getBoundingClientRect().top - 40; return 'ok' })()`); await wait(1200)
+    await record.start('invite2'); await wait(1400)
+    const accept = (ids) => ev(`(() => { for (const id of ${JSON.stringify(ids)}) window.__adStatus[id] = 'accepted'; document.dispatchEvent(new Event('visibilitychange')); return 'ok' })()`)
+    await accept(['u_ad_vikram']); await wait(1300)
+    await accept(['u_ad_rohan', 'u_ad_ananya']); await wait(1300)
+    await accept(['u_ad_zoya']); await wait(1800)
+    await record.stop()
+  },
+  // No signal: STOP waits ("Queued"), then goes out when the signal returns.
+  async offline2() {
+    await ev(`location.hash = '#trips'`); await wait(1200)
+    await ev(`__click(/Go live with the group|^Go live$/i)`); await wait(7000)
+    await record.start('offline2'); await wait(900)
+    await c.send('Network.enable')
+    await c.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 })
+    await ev(`window.__adDemo = { ...(window.__adDemo || {}), offline: true }; 'offline'`); await wait(900)
+    await ev(`__click(/Tell the group: Stop/i)`); await wait(3200)
+    await c.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
+    await ev(`window.__adDemo.offline = false; window.dispatchEvent(new Event('online')); 'online'`); await wait(2600)
+    await record.stop()
+  },
+  // The website's "Get the app": Home Screen install, store apps coming soon.
+  async install() {
+    await c.send('Page.navigate', { url: SITE + '#download' }); await wait(3500)
+    await ev(HELPERS)
+    await ev(`(() => { const s = document.getElementById('download'); window.scrollTo(0, s.offsetTop - 20); return 'ok' })()`); await wait(800)
+    await record.start('install'); await wait(1200)
+    await ev(`__scroll(520, 2600, document.scrollingElement)`); await wait(2600)
+    await record.stop()
+    await c.send('Page.navigate', { url: APP + '#map' }); await wait(4000)
+  },
   async reset() {
     await ev(`(() => { for (const re of [/^Cancel$/, /^Close$/i, /Stop navigating/i]) { const e = window.__q(re, 'button'); if (e) e.click() } location.hash = '#map'; return 'ok' })()`); await wait(1500)
   },
@@ -222,6 +276,12 @@ const scenes = {
   },
   async shot() { await shot(path.join(TMP, 'h-shot.png')); console.log(await ev('location.hash')) },
 }
+
+// Every run: location/camera/mic allowed for the local copy (the app asks the
+// browser's permission, not just navigator.geolocation), and the fake GPS on
+// every page this run loads.
+await c.send('Browser.grantPermissions', { origin: new URL(APP).origin, permissions: ['geolocation', 'videoCapture', 'audioCapture'] }).catch((e) => console.log('grant:', e.message))
+await c.send('Page.addScriptToEvaluateOnNewDocument', { source: GEO })
 
 const name = process.argv[2]
 if (!scenes[name]) { console.log('scenes:', Object.keys(scenes).join(', ')); process.exit(1) }

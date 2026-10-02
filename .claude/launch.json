@@ -21,6 +21,26 @@
         "--strictPort"
       ],
       "port": 4173
+    },
+    {
+      "name": "local-only-no-accounts",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= exec npx vite --port \"${PORT:-5190}\" --strictPort"
+      ],
+      "port": 5190,
+      "autoPort": true
+    },
+    {
+      "name": "csp-check",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "exec npx vite preview --outDir dist-csp --port \"${PORT:-4180}\" --strictPort"
+      ],
+      "port": 4180,
+      "autoPort": true
     }
   ]
 }

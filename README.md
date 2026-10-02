@@ -370,9 +370,13 @@ headless Chrome so the Outfit wordmark rasterises with the real font:
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 "$CHROME" --headless --window-size=1200,630 --virtual-time-budget=6000 \
   --screenshot=brand/og.png "file://$PWD/brand/render/og.html"
+ffmpeg -y -i brand/og.png -q:v 3 public/og.jpg && cp brand/og.png public/og.png
 ```
 
-- `brand/og.png` (1200×630) — social share card, copied to `public/og.png`
+- `brand/og.png` (1200×630) — social share card ("Ride together, live." over a
+  frame of the ad's convoy b-roll, `brand/render/og-bg.jpg`). The pages point at
+  `public/og.jpg`: WhatsApp drops preview images over ~300 KB, and the PNG is ~600 KB.
+  A new file name also makes apps fetch the new card instead of a cached one.
 - `brand/avatar-lockup.png` (512×512) — stacked lockup, for profile pictures
 - `brand/avatar-mark.png` (512×512) — mark only; use this wherever the avatar
   renders below ~100px, where a wordmark turns to mush

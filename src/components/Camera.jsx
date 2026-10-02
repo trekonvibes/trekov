@@ -68,14 +68,14 @@ export default function Camera({ onCapture, onCancel }) {
 
   return (
     <div className="fixed inset-0 z-[1500] bg-black flex justify-center" role="dialog" aria-label="Take a photo">
-      <div className="tk-shell h-full flex flex-col bg-black">
+      <div className="tk-shell h-full flex flex-col bg-black pt-safe px-safe">
         <header className="flex items-center justify-between px-4 h-14 shrink-0">
-          <button onClick={onCancel} className="text-white/80 hover:text-white" aria-label="Cancel">
+          <button onClick={onCancel} className="-ml-2 grid place-items-center size-10 text-white/80 hover:text-white" aria-label="Cancel">
             <CloseIcon size={22} />
           </button>
           <span className="text-sm font-semibold text-white/90">Take a photo</span>
           <button onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}
-                  className="text-xs font-semibold text-white/80 hover:text-white" aria-label="Switch camera">
+                  className="min-h-10 px-2 -mr-2 text-xs font-semibold text-white/80 hover:text-white" aria-label="Switch camera">
             Flip
           </button>
         </header>

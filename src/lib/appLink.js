@@ -25,7 +25,8 @@
 export const NATIVE = {
   scheme: 'trekov',
   ios: { appId: '' },      // e.g. '1234567890' → apps.apple.com/app/id1234567890
-  android: { pkg: '' },    // e.g. 'com.trekov.app' → play.google.com/store/apps/details?id=…
+  // Set once Trekov is live on Google Play; until then invites keep the APK download.
+  android: { pkg: import.meta.env.VITE_PLAY_LIVE === '1' ? 'com.trekov.app' : '' },
 }
 
 const ua = () => navigator.userAgent || ''

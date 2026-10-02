@@ -57,7 +57,8 @@ function signalling(tripId) {
     return {
       join(onMessage) {
         ready = false
-        ch = supabase.channel(`voice:${tripId}`, { config: { broadcast: { self: false } } })
+        // private: trip members only (supabase/security-hardening.sql).
+        ch = supabase.channel(`voice:${tripId}`, { config: { private: true, broadcast: { self: false } } })
         ch.on('broadcast', { event: 'sig' }, ({ payload }) => onMessage(payload))
           .subscribe((status) => {
             if (status !== 'SUBSCRIBED') { ready = false; return }

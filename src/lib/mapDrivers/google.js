@@ -15,11 +15,11 @@ function htmlOverlayClass(gm) {
                               `cursor:${onClick ? 'pointer' : 'default'}`
       this.el.innerHTML = html
       this.anchor = anchor
-      if (onClick) {
-        this.el.addEventListener('click', (e) => { e.stopPropagation(); onClick() })
-        // Stop the map from treating a tap on the marker as a drag start.
-        for (const ev of ['mousedown', 'touchstart', 'pointerdown']) this.el.addEventListener(ev, (e) => e.stopPropagation())
-      }
+      // A tap opens the marker; a drag or pinch that starts on it still moves
+      // the map. Swallowing touchstart/pointerdown here (as this used to) meant
+      // a pinch with a finger on a pin — easy with pins covering the India view
+      // — reached the map half-formed and the zoom jumped about (2026-09-11).
+      if (onClick) this.el.addEventListener('click', (e) => { e.stopPropagation(); onClick() })
     }
     onAdd() { this.getPanes().overlayMouseTarget.appendChild(this.el) }
     onRemove() { this.el.remove() }
@@ -48,10 +48,12 @@ const TYPES = [
  */
 const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID
 
-export function createGoogleMap(gm, el, { center, zoom, mapType = 'hybrid', zoomControl = false }) {
+export function createGoogleMap(gm, el, { center, zoom, mapType = 'hybrid', zoomControl = false, minZoom = 3 }) {
   const map = new gm.Map(el, {
     center: { lat: center[0], lng: center[1] },
     zoom,
+    // Further out the world just repeats, tiny, across the screen.
+    minZoom,
     ...(MAP_ID ? { mapId: MAP_ID } : {}),
     mapTypeId: mapType,
     disableDefaultUI: true,
@@ -98,7 +100,12 @@ export function createGoogleMap(gm, el, { center, zoom, mapType = 'hybrid', zoom
     },
     onClick: (fn) => listen('click', (e) => fn([e.latLng.lat(), e.latLng.lng()])),
     onDragStart: (fn) => listen('dragstart', fn),
-    onZoomEnd: (fn) => listen('zoom_changed', () => fn(map.getZoom())),
+    // Once the zoom has settled. 'zoom_changed' fires at every step of a pinch,
+    // and each one made the map screen redraw all its markers mid-gesture.
+    onZoomEnd: (fn) => {
+      let last = map.getZoom()
+      return listen('idle', () => { const z = map.getZoom(); if (z !== last) { last = z; fn(z) } })
+    },
 
     htmlMarker: (ll, html, { size = [44, 44], anchor, zIndex = 0, className = 'tk-marker', onClick } = {}) => {
       const o = new Overlay(toLL(ll), html, { size, anchor: anchor ?? [size[0] / 2, size[1] / 2], zIndex, className, onClick })
@@ -106,6 +113,7 @@ export function createGoogleMap(gm, el, { center, zoom, mapType = 'hybrid', zoom
       return {
         setLatLng: (p) => o.move(toLL(p)),
         setHtml: (h) => { o.el.innerHTML = h },
+        get el() { return o.el },
         remove: () => o.setMap(null),
       }
     },
@@ -125,8 +133,16 @@ export function createGoogleMap(gm, el, { center, zoom, mapType = 'hybrid', zoom
     // 45, but the raster tiles stay flat except in the few cities with 45°
     // aerial imagery — so gating on the map type showed a button that did
     // nothing almost everywhere.
-    supports3D: () => Boolean(MAP_ID),
-    isVector: () => Boolean(MAP_ID),
+    //
+    // A Map ID is not enough on its own, though: Google still draws raster
+    // when the ID is set up for raster or the device can't do vector, and then
+    // it quietly puts the heading back to 0 after every setHeading. So ask the
+    // map what it actually rendered (found while adding the compass,
+    // 2026-09-13). Until Google has decided, the answer is no.
+    supports3D: () => Boolean(MAP_ID) && map.getRenderingType?.() === gm.RenderingType?.VECTOR,
+    isVector: () => Boolean(MAP_ID) && map.getRenderingType?.() === gm.RenderingType?.VECTOR,
+    // Google decides vector or raster a moment after the map is created.
+    onRenderingType: (fn) => listen('renderingtype_changed', fn),
     setTilt: (deg) => { try { map.setTilt(deg) } catch {} },
     setHeading: (deg) => { try { map.setHeading(deg) } catch {} },
     getTilt: () => map.getTilt?.() ?? 0,

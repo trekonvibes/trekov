@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CAPACITOR_DEBUG</key>
+	<key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Trekov</string>
+	<string>Trekov</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -22,62 +22,60 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Trekov photos are taken in the app, at the place itself — that is what makes a photo on a location banner mean something.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>On a live group trip, Trekov keeps sharing your position with the riders on that trip even when your phone is in your pocket — that is the whole point of the group map. It stops the moment the trip ends, and you can switch sharing off at any time.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Trekov uses your location to navigate, to show what is nearby, and to place you on the map with the people you are riding with.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Trekov uses the microphone for push-to-talk with the people on your trip. Nothing is transmitted unless you hold the button.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Trekov can use a photo from your library for your profile picture. Place photos are camera-only.</string>
+	<key>TrekovAllowSimulate</key>
+	<string>$(TREKOV_ALLOW_SIMULATE)</string>
+	<key>TrekovNavKey</key>
+	<string>$(TREKOV_NAV_KEY)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
-    <false/>
-    <key>UISceneConfigurations</key>
-    <dict>
-      <key>UIWindowSceneSessionRoleApplication</key>
-      <array>
-        <dict>
-            <key>UISceneConfigurationName</key>
-            <string>Default Configuration</string>
-            <key>UISceneDelegateClassName</key>
-            <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-            <key>UISceneStoryboardFile</key>
-            <string>Main</string>
-        </dict>
-      </array>
-    </dict>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Trekov uses your location to navigate, to show what is nearby, and to place you on the map with the people you are riding with.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Trekov keeps navigating and keeps your group's map up to date while the app is in the background, so guidance continues with the screen off.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Trekov photos are taken in the app, at the place itself — that is what makes a photo on a location banner mean something.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Trekov uses the microphone for push-to-talk with the people on your trip. Nothing is transmitted unless you hold the button.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Trekov can use a photo from your library for your profile picture. Place photos are camera-only.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-		<string>audio</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>

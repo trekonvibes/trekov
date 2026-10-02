@@ -1,14 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import useBackClose from '../lib/useBackClose'
 import { deletePost, getPlace, resetAll, selectMyPosts, selectSavedPlaces, selectTrips, useStore } from '../lib/store'
-import { TrashIcon, Wordmark } from './Icons'
+import { amIAdmin } from '../lib/admin'
+import { CloseIcon, TrashIcon, Wordmark } from './Icons'
 import Account from './Account'
 import Media from './Media'
 import ProfileEditor from './ProfileEditor'
+import RiderId from './RiderId'
+import Portal from './Portal'
 
-export default function Profile({ onPost, onAuth, onListBusiness }) {
+export default function Profile({ onPost, onAuth, onListBusiness, onPlans, onAdmin }) {
   const [confirmReset, setConfirmReset] = useState(false)
+  const [legal, setLegal] = useState(null)   // '/privacy/' | '/terms/' | '/delete-account/'
+  useBackClose(() => setLegal(null), Boolean(legal))
   const [editing, setEditing] = useState(false)
   const profile = useStore((s) => s.profile)
+  const account = useStore((s) => s.account)
+  // The Admin entry shows only for admins; the server checks again on every call.
+  const [isAdmin, setIsAdmin] = useState(false)
+  useEffect(() => {
+    if (!account) return setIsAdmin(false)
+    let live = true
+    amIAdmin().then((ok) => live && setIsAdmin(ok)).catch(() => {})
+    return () => { live = false }
+  }, [account?.id])
   const mine = useStore(selectMyPosts)
   const saved = useStore(selectSavedPlaces)
   const trips = useStore(selectTrips)
@@ -41,14 +56,27 @@ export default function Profile({ onPost, onAuth, onListBusiness }) {
 
       {editing && <ProfileEditor onClose={() => setEditing(false)} />}
 
-      <Account onAuth={onAuth} />
+      <Account onAuth={onAuth} onPlans={onPlans} />
+
+      <RiderId />
+
+      {isAdmin && onAdmin && (
+        <button onClick={onAdmin}
+                className="mx-5 mt-3 w-[calc(100%-2.5rem)] flex items-center gap-3 rounded-2xl border border-brand/40 bg-brand/5 px-4 py-3 text-left hover:border-brand">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Admin</span>
+            <span className="block text-xs text-mist mt-0.5">Sign-ups, activity, users and app settings</span>
+          </span>
+          <span className="text-brand text-xs font-semibold shrink-0">Open</span>
+        </button>
+      )}
 
       {onListBusiness && (
         <button onClick={onListBusiness}
                 className="mx-5 mt-3 w-[calc(100%-2.5rem)] flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left hover:border-brand">
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">Your business on Trekov</span>
-            <span className="block text-xs text-mist mt-0.5">List a stay, dhaba, garage, fuel stop or rental — free</span>
+            <span className="block text-xs text-mist mt-0.5">List a stay, dhaba, garage, fuel stop or rental</span>
           </span>
           <span className="text-brand text-xs font-semibold shrink-0">Open</span>
         </button>
@@ -91,6 +119,27 @@ export default function Profile({ onPost, onAuth, onListBusiness }) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* The policies the app is bound by, one tap from the profile. They ship
+          inside the app too, so they open offline (launch polish, 2026-09-14). */}
+      <nav className="px-5 pt-8 flex flex-wrap gap-x-4 gap-y-2 text-xs text-mist" aria-label="About Trekov">
+        <button onClick={() => setLegal('/privacy/index.html')} className="underline underline-offset-4 hover:text-white">Privacy policy</button>
+        <button onClick={() => setLegal('/terms/index.html')} className="underline underline-offset-4 hover:text-white">Terms</button>
+        <button onClick={() => setLegal('/delete-account/index.html')} className="underline underline-offset-4 hover:text-white">Deleting your account</button>
+        <a href="mailto:trekonvibes@gmail.com?subject=Trekov%20support" className="underline underline-offset-4 hover:text-white">Contact support</a>
+      </nav>
+      {legal && (
+        <Portal>
+          <div className="fixed inset-0 z-[1300] bg-ink flex flex-col pt-safe" role="dialog" aria-label="Trekov policy">
+            <header className="flex items-center justify-end px-2 h-12 border-b border-line shrink-0">
+              <button onClick={() => setLegal(null)} className="grid place-items-center size-10 text-mist hover:text-white" aria-label="Close">
+                <CloseIcon size={22} />
+              </button>
+            </header>
+            <iframe src={legal} title="Trekov policy" className="flex-1 w-full bg-ink border-0" />
+          </div>
+        </Portal>
       )}
 
       <div className="px-5 py-10">

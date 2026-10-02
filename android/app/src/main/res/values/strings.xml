@@ -4,4 +4,10 @@
     <string name="title_activity_main">Trekov</string>
     <string name="package_name">com.trekov.app</string>
     <string name="custom_url_scheme">com.trekov.app</string>
+    <string name="shortcut_group_short">Group trip</string>
+    <string name="shortcut_group_long">Open your trips</string>
+    <string name="shortcut_map_short">Map</string>
+    <string name="shortcut_map_long">Open the map</string>
+    <string name="shortcut_post_short">Nearby</string>
+    <string name="shortcut_post_long">What\'s nearby</string>
 </resources>

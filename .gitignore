@@ -18,3 +18,20 @@ marketing/ad-30s/assets/
 # 60 s ad: generated media stays out of git
 marketing/ad-60s/assets/
 marketing/ad-60s/*.mp4
+dist-csp
+
+# Android signing. The upload key and its passwords stay on this machine: with
+# them anyone could publish an update as Trekov, and this repo is public.
+android-keys/
+android/keystore.properties
+*.jks
+*.keystore
+
+# Built apps (rebuild with scripts/android-release.sh) — too big for the repo.
+releases/
+
+# Firebase config for the Android app. Google treats it as non-secret (the key
+# inside is restricted to this package and signing certificate), but this repo
+# is public and it identifies the project, so it stays on the machine that
+# builds. Put it back in android/app/ to build with push notifications.
+android/app/google-services.json

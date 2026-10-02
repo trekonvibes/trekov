@@ -5,6 +5,7 @@
 // depends on the app working with no network and no session.
 
 import { createClient } from '@supabase/supabase-js'
+import { deviceId } from './device'
 
 const URL = import.meta.env.VITE_SUPABASE_URL
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -15,6 +16,8 @@ export const supabase = hasSupabase
   ? createClient(URL, ANON, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
       realtime: { params: { eventsPerSecond: 5 } },
+      // Lets the server keep an account to one device at a time (memberships.sql).
+      global: { headers: { 'x-device-id': deviceId() } },
     })
   : null
 

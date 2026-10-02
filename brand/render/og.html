@@ -1,18 +1,34 @@
 <!doctype html><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<!-- Social share card, 1200×630 — group rides (Punit, 2026-09-12). The
+     background, og-bg.jpg, is a frame of the ad's convoy b-roll
+     (marketing/ad-60s/assets/broll-convoy.mp4 at 4.5 s). Render: README
+     "Brand assets"; the site serves it as public/og.jpg. -->
 <style>
-  body { width: 1200px; height: 630px; }
-  .wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 30px; }
-  .lock { gap: 24px; }
-  .wm { font-size: 132px; }
-  .tag { font-size: 40px; color: #8FA39C; letter-spacing: -.01em; }
-  .dom { font-size: 26px; color: #00C08B; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
+  body {
+    width: 1200px; height: 630px; display: block;
+    /* Wider than the card and pinned left, so the convoy sits right of the text. */
+    background: #0B0F0E url('og-bg.jpg') 0% 82% / 1640px auto no-repeat;
+  }
+  .shade {
+    position: fixed; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(8,12,11,.96) 0%, rgba(8,12,11,.88) 36%, rgba(8,12,11,.4) 62%, rgba(8,12,11,.05) 100%),
+      linear-gradient(0deg, rgba(8,12,11,.6) 0%, transparent 34%);
+  }
+  .wrap { position: relative; padding: 70px 0 0 80px; display: flex; flex-direction: column; gap: 20px; width: 720px; }
+  .lock { gap: 18px; }
+  .wm { font-size: 84px; line-height: 1; margin-top: -8px; }
+  .head { font-size: 82px; font-weight: 700; letter-spacing: -.035em; line-height: 1; margin-top: 18px; }
+  .sub { font-size: 30px; font-weight: 500; color: #C9D6D1; }
+  .dom { margin-top: 18px; font-size: 26px; color: #00C08B; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
 </style>
-<div class="glow"></div>
+<div class="shade"></div>
 <div class="wrap">
   <div class="lock">
-    <svg viewBox="0 0 64 64" width="140" height="140"><defs><linearGradient id="g" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs><path fill="url(#g)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+    <svg viewBox="0 0 64 64" width="88" height="88"><defs><linearGradient id="g" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs><path fill="url(#g)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
     <span class="wm">trekov</span>
   </div>
-  <p class="tag">The map is the feed.</p>
+  <p class="head">Ride together,<br>live.</p>
+  <p class="sub">One route · Live group map · Push-to-talk</p>
   <p class="dom">trekov.com</p>
 </div>

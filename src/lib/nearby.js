@@ -1,13 +1,13 @@
 // What is around a place: hotels, food, repair shops, other attractions.
 //
 // Two sources:
-//   1. Businesses listed on Trekov — free for any business to add
+//   1. Businesses listed on Trekov (the business plan; the server shows only
+//      listings whose owner has one — supabase/memberships.sql)
 //   2. Google Places — so a category is never empty anywhere
 //
-// A free listing sits among the results by distance, labelled "On Trekov".
-// Only an optional boost buys "Partner" placement at the top; listing itself
-// never costs anything. Nothing here is ever invented — an empty category
-// shows as empty.
+// A listing sits among the results by distance, labelled "On Trekov". Only
+// an optional boost buys "Partner" placement at the top. Nothing here is
+// ever invented — an empty category shows as empty.
 
 import { photoUrl, supabase } from './supabase'
 import { distance } from './geo'
@@ -71,8 +71,8 @@ async function trekovListings(category, { lat, lng }, radiusKm) {
     .limit(20)
   if (error) { console.info('Trekov: listings unavailable —', error.message); return [] }
   const rows = data ?? []
-  // Products come back only for listings with a live products plan (see
-  // supabase/listing-products.sql), so none are shown otherwise.
+  // Products come back only for listings whose owner has the business plan
+  // (see supabase/memberships.sql), so none are shown otherwise.
   const products = {}
   if (rows.length) {
     const { data: ps } = await supabase.from('listing_products')

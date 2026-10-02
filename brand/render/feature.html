@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<!-- Play Store feature graphic, 1024×500 (Punit, 2026-09-12). Same convoy
+     frame as the social card. Play crops the sides on some surfaces, so the
+     composition is centred and everything sits inside a 15% margin. Render:
+     README "Brand assets". -->
+<style>
+  body {
+    width: 1024px; height: 500px; display: block;
+    background: #0B0F0E url('og-bg.jpg') 50% 78% / 1500px auto no-repeat;
+  }
+  .shade {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(120% 90% at 50% 40%, rgba(8,12,11,.62) 0%, rgba(8,12,11,.88) 58%, rgba(8,12,11,.97) 100%),
+      linear-gradient(0deg, rgba(8,12,11,.75) 0%, transparent 45%);
+  }
+  .wrap {
+    position: relative; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 0 150px; text-align: center;
+  }
+  .lock { gap: 14px; }
+  .wm { font-size: 52px; line-height: 1; margin-top: -4px; }
+  .head { font-size: 62px; font-weight: 700; letter-spacing: -.035em; line-height: 1.02; }
+  .head em { font-style: normal; color: #00C08B; }
+  .sub { font-size: 24px; font-weight: 500; color: #C2D2CC; letter-spacing: .01em; }
+</style>
+<div class="shade"></div>
+<div class="wrap">
+  <div class="lock">
+    <svg viewBox="0 0 64 64" width="54" height="54"><defs><linearGradient id="g" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/></linearGradient></defs><path fill="url(#g)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/></svg>
+    <span class="wm">trekov</span>
+  </div>
+  <p class="head">Ride together, <em>live</em>.</p>
+  <p class="sub">One route · Everyone on one map · Push-to-talk</p>
+</div>

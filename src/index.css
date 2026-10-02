@@ -14,6 +14,14 @@
 }
 
 html, body, #root { height: 100%; }
+/* iPhone navigation: Google's map is under the page, so the page turns
+   see-through and the app behind the navigation screen steps out of sight. */
+html.tk-see-through, html.tk-see-through body { background: transparent; }
+html.tk-see-through #root { visibility: hidden; }
+/* On an iPhone Home Screen app, "100%" can stop short of the screen by the
+   safe-area insets, leaving a black band under the tab bar. Pinning the root
+   to the viewport always fills it; the app scrolls inside its own panels. */
+#root { position: fixed; inset: 0; height: auto; }
 
 body {
   background: var(--color-ink);
@@ -22,6 +30,12 @@ body {
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
+
+/* The page itself never pinch-zooms; the map does its own pinch. A pinch that
+   landed on the search bar or a card zoomed the whole app, and with the map
+   under it everything lurched (Punit, 2026-09-11). pan-x pan-y keeps every
+   panel scrolling. Paired with maximum-scale=1 in app/index.html. */
+html, body { touch-action: pan-x pan-y; }
 
 /* Hide scrollbars on horizontal rails without losing scrollability */
 /* The app column.
@@ -37,6 +51,13 @@ body {
 
 .no-bar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-bar::-webkit-scrollbar { display: none; }
+
+/* Safe areas: status bar, notch / Dynamic Island (also left or right in
+   landscape) and the home indicator. The page is viewport-fit=cover, so these
+   are ours to pad — once, on the outermost container touching that edge. */
+@utility pt-safe { padding-top: env(safe-area-inset-top); }
+@utility px-safe { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+@utility pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
 @keyframes pop { 0% { transform: scale(1) } 40% { transform: scale(1.32) } 100% { transform: scale(1) } }
 .pop { animation: pop .32s cubic-bezier(.34,1.56,.64,1); }
@@ -101,7 +122,7 @@ body {
    Rotation lives on the outer node and motion on the inner one, so the two
    transforms compose instead of overwriting each other. */
 .tk-me {
-  width: 44px; height: 44px; display: grid; place-items: center;
+  width: 86px; height: 86px; display: grid; place-items: center;
   transform: rotate(var(--rot, 0deg));
   transition: transform .35s ease-out;
 }
@@ -118,7 +139,8 @@ body {
   80%  { transform: translate(-.4px, -.25px) }
   100% { transform: translate(0, 0) }
 }
-.tk-me-inner.is-idle { animation: engine-idle .16s linear infinite; }
+/* Not applied any more: on iPhone the 6-per-second jitter under the drop-shadow
+   read as the vehicle blinking (Punit, 2026-09-11). A stopped vehicle sits still. */
 
 /* Moving: speed streaks behind the vehicle. The icon points "up" in its own
    frame, so behind is downward and the streaks rotate with the marker.
@@ -149,13 +171,15 @@ body {
 
 /* Companions on a group trip: their vehicle, their colour, their name.
    The name stays upright while the vehicle rotates to their heading. */
-.tk-mate { position: relative; width: 44px; height: 44px; display: grid; place-items: center; }
-.tk-mate .tk-me { width: 44px; height: 44px; }
+/* Other riders are drawn smaller than you, and a touch see-through: at your
+   size a group of them covered the road (2026-09-14). */
+.tk-mate { position: relative; width: 52px; height: 52px; display: grid; place-items: center; }
+.tk-mate .tk-me { width: 52px; height: 52px; opacity: .9; }
 .tk-mate .tk-me-inner svg { filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)); }
 .tk-mate-name {
-  position: absolute; bottom: 38px; left: 50%; translate: -50% 0; z-index: 2;
-  white-space: nowrap; font-size: 10px; font-weight: 700; color: #EEF3F1;
-  background: rgba(11,15,14,.8); border-radius: 999px; padding: 1px 6px;
+  position: absolute; bottom: 40px; left: 50%; translate: -50% 0; z-index: 2;
+  white-space: nowrap; font-size: 9px; font-weight: 700; color: #EEF3F1;
+  background: rgba(11,15,14,.72); max-width: 96px; overflow: hidden; text-overflow: ellipsis; border-radius: 999px; padding: 1px 6px;
   text-shadow: 0 1px 3px rgba(0,0,0,.9);
 }
 
@@ -198,3 +222,14 @@ body {
 @keyframes tk-alert-word { from { transform: scale(1) } to { transform: scale(1.08) } }
 .tk-alert { animation: tk-alert-flash .45s ease-in-out 8; }
 .tk-alert-word { animation: tk-alert-word .5s ease-in-out infinite alternate; }
+
+/* A companion not heard from in a minute: greyed where they were last seen. */
+.tk-mate.is-stale .tk-me { opacity: .45; filter: grayscale(1); }
+.tk-mate.is-stale .tk-mate-name { opacity: .8; }
+
+/* The captain: the rider the host asked to lead, so the group can find them
+   at a glance on the map. */
+.tk-mate.is-captain .tk-mate-name { background: var(--color-brand); color: #06110D; }
+.tk-mate.is-captain .tk-me-inner svg {
+  filter: drop-shadow(0 0 7px rgba(0, 192, 139, .85)) drop-shadow(0 2px 5px rgba(0, 0, 0, .7));
+}

@@ -68,6 +68,14 @@ export const BackIcon = (p) => (
 export const SendIcon = (p) => (
   <Icon {...p}><path d="M20 4 3 11l7 2.6L12.6 21Z" /></Icon>
 )
+// A film frame with a play mark: the route reel.
+export const ReelIcon = (p) => (
+  <Icon {...p}><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M7.5 5v14M16.5 5v14" opacity=".45" /><path d="M10.6 9.6v4.8l4-2.4Z" /></Icon>
+)
+// A ticked circle: a trip that has been ridden.
+export const DoneIcon = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="8.5" /><path d="m8.3 12.3 2.5 2.5 5-5.2" /></Icon>
+)
 export const CalendarIcon = (p) => (
   <Icon {...p}><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M8 3v4M16 3v4M3.5 10h17" /></Icon>
 )

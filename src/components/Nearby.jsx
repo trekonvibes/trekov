@@ -201,7 +201,7 @@ export default function Nearby({ centre, centreName, onNavigate, onListBusiness 
             <button onClick={onListBusiness}
                     className="mt-3 w-full rounded-2xl border border-dashed border-brand/50 px-4 py-3 text-left hover:bg-brand/5">
               <span className="block text-sm font-semibold text-brand">Run a business near here?</span>
-              <span className="block text-xs text-mist mt-0.5">List it on Trekov — free, no sign-up fee.</span>
+              <span className="block text-xs text-mist mt-0.5">List it on Trekov — riders nearby will find it.</span>
             </button>
           )}
 
@@ -230,7 +230,7 @@ export default function Nearby({ centre, centreName, onNavigate, onListBusiness 
 
               <p className="text-[11px] text-mist mt-3 leading-relaxed">
                 These come from Google. Businesses listed with Trekov appear above them —
-                <a href="mailto:punit13690@gmail.com?subject=Listing%20on%20Trekov" className="text-brand"> get listed</a>.
+                <a href="mailto:trekonvibes@gmail.com?subject=Listing%20on%20Trekov" className="text-brand"> get listed</a>.
               </p>
             </>
           )}

@@ -11,37 +11,57 @@
  * Gradient ids are suffixed per instance so several copies can coexist.
  */
 
-import sedanPng from '../assets/vehicles/sedan.webp'
 import hatchbackPng from '../assets/vehicles/hatchback.webp'
+import compactPng from '../assets/vehicles/compact.webp'
+import sedanPng from '../assets/vehicles/sedan.webp'
 import suvPng from '../assets/vehicles/suv.webp'
+import offroadPng from '../assets/vehicles/offroad.webp'
+import minivanPng from '../assets/vehicles/minivan.webp'
 import pickupPng from '../assets/vehicles/pickup.webp'
+import sportscarPng from '../assets/vehicles/sportscar.webp'
 import classicPng from '../assets/vehicles/classic.webp'
-import sportPng from '../assets/vehicles/sport.webp'
+import roadsterPng from '../assets/vehicles/roadster.webp'
 import cruiserPng from '../assets/vehicles/cruiser.webp'
-import commuterPng from '../assets/vehicles/commuter.webp'
-import scooterPng from '../assets/vehicles/scooter.webp'
+import trailPng from '../assets/vehicles/trail.webp'
+import tourerPng from '../assets/vehicles/tourer.webp'
+import sportPng from '../assets/vehicles/sport.webp'
+import hyperPng from '../assets/vehicles/hyper.webp'
 
-// Every vehicle you can drive. `car` and `bike` are the drawn ones that take
-// a colour; the rest are free 3D models rendered top-down in Blender
-// (scripts/vehicles/). Their paint is fixed, so the chosen colour becomes a
-// glow under them instead. Names are generic on purpose — they are
-// look-alikes, not the real makes. CC-BY models must stay credited.
-const POLY = (id) => `https://poly.pizza/m/${id}`
-const BY3 = 'CC-BY 3.0'
+// Every vehicle you can drive, all real 3D models rendered in Blender
+// (scripts/vehicles/). Punit supplied them (2026-09-14): the Generic Passenger
+// Car Pack and downloaded motorcycle models; normalize.py lines
+// each one up and fixups.py repairs its materials. Each keeps its own paint —
+// "colours changing not needed". Punit confirmed no credits are needed for these
+// models (2026-09-14). Names are generic, not makes, and tanks and
+// fairings are painted without logos. The 3D map images come from sprites3d.py.
+//
+// `car` and `bike` are the old drawn vehicles. They are not offered any more,
+// but a rider on an older version may still be driving one, so they still draw.
 export const MODELS = [
-  { id: 'car',       base: 'car',  label: 'Car' },
-  { id: 'sedan',     base: 'car',  label: 'Sedan',     src: sedanPng,     credit: { by: 'Kenney', license: 'CC0', url: 'https://kenney.nl/assets/car-kit' } },
-  { id: 'hatchback', base: 'car',  label: 'Hatchback', src: hatchbackPng, credit: { by: 'Kay Lousberg', license: 'CC0', url: POLY('BG0KAhmGDt') } },
-  { id: 'suv',       base: 'car',  label: 'SUV',       src: suvPng,       credit: { by: 'IvOfficial', license: BY3, url: POLY('8zk4o6nALW') } },
-  { id: 'pickup',    base: 'car',  label: 'Pickup',    src: pickupPng,    credit: { by: 'Muhammad Reyhan', license: BY3, url: POLY('4qjS9tFhsJg') } },
-  { id: 'bike',      base: 'bike', label: 'Bike' },
-  { id: 'classic',   base: 'bike', label: 'Classic',   src: classicPng,   credit: { by: 'Zsky', license: BY3, url: POLY('9SwnIlPjNv') } },
-  { id: 'cruiser',   base: 'bike', label: 'Cruiser',   src: cruiserPng,   credit: { by: 'Poly by Google', license: BY3, url: POLY('5_MTCnqfUTr') } },
-  { id: 'sport',     base: 'bike', label: 'Sport',     src: sportPng,     credit: { by: 'Poly by Google', license: BY3, url: POLY('dse64pqMKAR') } },
-  { id: 'commuter',  base: 'bike', label: 'Commuter',  src: commuterPng,  credit: { by: 'Poly by Google', license: BY3, url: POLY('cFvmALDjMKw') } },
-  { id: 'scooter',   base: 'bike', label: 'Scooter',   src: scooterPng,   credit: { by: 'Jasmine Roberts', license: BY3, url: POLY('blGLclvvdEM') } },
+  { id: 'hatchback', base: 'car',  label: 'Hatchback',   src: hatchbackPng },
+  { id: 'compact',   base: 'car',  label: 'Compact',     src: compactPng },
+  { id: 'sedan',     base: 'car',  label: 'Sedan',       src: sedanPng },
+  { id: 'suv',       base: 'car',  label: 'SUV',         src: suvPng },
+  { id: 'offroad',   base: 'car',  label: 'Off-roader',  src: offroadPng },
+  { id: 'minivan',   base: 'car',  label: 'MPV',         src: minivanPng },
+  { id: 'pickup',    base: 'car',  label: 'Pickup',      src: pickupPng },
+  { id: 'sportscar', base: 'car',  label: 'Sports car',  src: sportscarPng },
+  { id: 'classic',   base: 'bike', label: 'Classic',     src: classicPng },
+  { id: 'roadster',  base: 'bike', label: 'Roadster',    src: roadsterPng },
+  { id: 'cruiser',   base: 'bike', label: 'Cruiser',     src: cruiserPng },
+  { id: 'trail',     base: 'bike', label: 'Trail',       src: trailPng },
+  { id: 'tourer',    base: 'bike', label: 'Sport tourer', src: tourerPng },
+  { id: 'sport',     base: 'bike', label: 'Superbike',   src: sportPng },
+  { id: 'hyper',     base: 'bike', label: 'Hyperbike',   src: hyperPng },
 ]
-const MODEL = Object.fromEntries(MODELS.map((m) => [m.id, m]))
+/** What someone who had picked a vehicle that is no longer offered now drives. */
+export const pickableVehicle = (id) =>
+  MODELS.some((m) => m.id === id) ? id : (RETIRED.find((m) => m.id === id)?.base === 'bike' ? 'classic' : 'hatchback')
+// Vehicles from earlier versions, still sent by riders who have not updated.
+const RETIRED = [{ id: 'car', base: 'car' }, { id: 'bike', base: 'bike' }, { id: 'commuter', base: 'bike' }, { id: 'scooter', base: 'bike' },
+  // The retro coupe went (Punit, 2026-09-16); anyone still on it drives a hatchback.
+  { id: 'coupe', base: 'car' }]
+const MODEL = Object.fromEntries([...MODELS, ...RETIRED].map((m) => [m.id, m]))
 
 /** 'car' or 'bike' — all routing and the speed streaks need to know. */
 export const baseOf = (kind) => MODEL[kind]?.base ?? (kind === 'bike' ? 'bike' : 'car')
@@ -154,10 +174,10 @@ export function vehicleSvg(kind, { colour = 'green', size = 40, id = 'v', ring =
   const t = colourById(colour).tint
   const model = MODEL[kind]
   if (model?.src) {
-    // Bikes are narrow, so they are drawn a touch smaller than the box.
+    // Bikes are narrow, so they are drawn a touch smaller than the box. The
+    // models carry their own paint, so there is no colour glow under them.
     const px = Math.round(size * (model.base === 'bike' ? 1.05 : 1.2))
-    const glow = ring ? `background:radial-gradient(closest-side,${t.mid}cc,${t.mid}40 62%,transparent);` : ''
-    return `<span style="display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:50%;${glow}" aria-hidden="true">`
+    return `<span style="display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:50%" aria-hidden="true">`
       + `<img src="${model.src}" width="${px}" height="${px}" alt="" draggable="false" style="max-width:none;display:block;pointer-events:none"></span>`
   }
   if (!ART[kind]) kind = baseOf(kind)

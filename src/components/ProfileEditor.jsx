@@ -94,7 +94,7 @@ export default function ProfileEditor({ onClose }) {
     <Portal>
       <div className="fixed inset-0 z-[1250] flex items-end justify-center" role="dialog" aria-label="Edit profile">
         <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
-        <div className="sheet-up relative tk-shell max-h-[85vh] flex flex-col rounded-t-3xl border-t border-line bg-ink">
+        <div className="sheet-up relative tk-shell max-h-[85vh] supports-[height:1dvh]:max-h-[85dvh] px-safe flex flex-col rounded-t-3xl border-t border-line bg-ink">
           <header className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
             <div className="min-w-0">
               <h2 className="font-semibold">Edit profile</h2>

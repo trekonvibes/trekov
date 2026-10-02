@@ -80,10 +80,15 @@ export async function signOut() {
 /** The signed-in user plus their profile row, or null. */
 export async function currentAccount() {
   if (!supabase) return null
-  const { data: { user } } = await supabase.auth.getUser()
+  // The session saved on this device, not a server round-trip: the app requires
+  // sign-in, and a rider who is signed in must still get in with no signal.
+  // (The server checks the token on every request regardless.)
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
   if (!user) return null
   const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single()
+    .from('profiles').select('id, handle, name, bio, avatar').eq('id', user.id).single()
+    .then((r) => r, () => ({ data: null }))
   return {
     id: user.id,
     email: user.email,
@@ -91,6 +96,40 @@ export async function currentAccount() {
     name: profile?.name ?? '',
     avatar: profile?.avatar ?? '',
   }
+}
+
+/**
+ * Emails a one-time sign-in link to the account's address. Opening it brings
+ * the person back to the deletion screen with a fresh email sign-in, which
+ * the delete-account function requires (within 15 minutes).
+ */
+export async function sendDeletionLink(email) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/app/?delete-account&confirm=1` },
+  })
+  if (error) throw new Error(/rate|seconds/i.test(error.message) ? 'Please wait a minute before asking for another email.' : error.message)
+}
+
+/**
+ * Deletes this account for good (supabase/functions/delete-account): photos,
+ * posts, reviews, trips, listings and the sign-in. Cannot be undone.
+ */
+export async function deleteAccount() {
+  const { error } = await supabase.functions.invoke('delete-account', { body: { confirm: 'DELETE' } })
+  if (error) {
+    let body = null
+    try { body = await error.context?.json?.() } catch { /* keep the default */ }
+    throw Object.assign(new Error(body?.error || 'Could not delete the account. Check your connection and try again.'),
+      { needsEmail: Boolean(body?.needsEmail) })
+  }
+  try { sessionStorage.setItem('trekov.deleted', '1') } catch { /* ignore */ }
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+}
+
+/** Signs out this device only — another device has taken the account over. */
+export async function signOutHere() {
+  if (supabase) await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
 }
 
 export function onAuthChange(fn) {

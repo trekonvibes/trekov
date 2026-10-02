@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import useBackClose from '../lib/useBackClose'
 import {
   addComment, FACT_FIELDS, getPlace, getUser, selectFactsAt, toggleLike, useStore,
 } from '../lib/store'
@@ -6,12 +7,16 @@ import { compact, timeAgo } from '../lib/format'
 import { CloseIcon, CommentIcon, HeartIcon, Logo, SendIcon } from './Icons'
 import Media from './Media'
 import Portal from './Portal'
+import ReportSheet from './ReportSheet'
 
 /** A single photo opened from a place, with its author, likes and comments. */
 export default function PhotoViewer({ postId, onClose }) {
   const post = useStore((s) => s.posts.find((p) => p.id === postId))
   const [text, setText] = useState('')
   const [burst, setBurst] = useState(false)
+  const [reporting, setReporting] = useState(null)   // { kind, targetId, userId, handle }
+  const account = useStore((s) => s.account)
+  useBackClose(onClose, !reporting)
   const facts = useStore((s) => (post ? selectFactsAt(s, post.placeId) : null))
 
   if (!post) return null
@@ -32,14 +37,18 @@ export default function PhotoViewer({ postId, onClose }) {
   return (
     <Portal>
       <div className="fixed inset-0 z-[1100] bg-black flex justify-center" role="dialog" aria-label="Photo">
-        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line">
+        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line pt-safe px-safe">
         <header className="flex items-center gap-3 px-4 h-14 border-b border-line shrink-0">
-          <button onClick={onClose} className="text-mist hover:text-white" aria-label="Close"><CloseIcon size={22} /></button>
+          <button onClick={onClose} className="-ml-2 -mr-1 grid place-items-center size-10 shrink-0 text-mist hover:text-white" aria-label="Close"><CloseIcon size={22} /></button>
           <img src={author.avatar} alt="" className="size-8 rounded-full object-cover" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate leading-tight">{author.name}</p>
             <p className="text-xs text-mist truncate">@{author.handle} · {timeAgo(post.createdAt)}</p>
           </div>
+          {account && post.authorId !== account.id && post.authorId !== 'u_me' && (
+            <button onClick={() => setReporting({ kind: 'post', targetId: post.id, userId: post.authorId, handle: author.handle })}
+                    className="text-xs text-mist hover:text-rose px-2 min-h-10 shrink-0">Report</button>
+          )}
         </header>
 
         <div className="flex-1 overflow-y-auto">
@@ -107,7 +116,11 @@ export default function PhotoViewer({ postId, onClose }) {
                     <img src={u.avatar} alt="" className="size-8 rounded-full object-cover shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm"><span className="font-semibold">{u.handle}</span>{' '}
-                        <span className="text-mist text-xs">{timeAgo(c.createdAt)}</span></p>
+                        <span className="text-mist text-xs">{timeAgo(c.createdAt)}</span>
+                        {account && c.userId !== account.id && c.userId !== 'u_me' && (
+                          <button onClick={() => setReporting({ kind: 'comment', targetId: c.id, userId: c.userId, handle: u.handle })}
+                                  className="ml-2 text-[11px] text-mist hover:text-rose">Report</button>
+                        )}</p>
                       <p className="text-sm text-white/90 break-words">{c.text}</p>
                     </div>
                   </li>
@@ -126,6 +139,10 @@ export default function PhotoViewer({ postId, onClose }) {
         </form>
         </div>
       </div>
+      {reporting && (
+        <ReportSheet {...reporting} onClose={() => setReporting(null)}
+                     onBlocked={() => { if (reporting.kind === 'post') onClose() }} />
+      )}
     </Portal>
   )
 }

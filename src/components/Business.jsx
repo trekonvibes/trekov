@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { hasSupabase } from '../lib/auth'
 import { useStore } from '../lib/store'
 import { CATEGORIES } from '../lib/nearby'
-import { MAX_LISTINGS, deleteListing, myListings, saveListing, validPhone } from '../lib/listings'
-import {
-  PRODUCTS_PLAN_INR, UNITS, activationMailto, deleteProduct, formatInr, myProducts, planActive, saveProduct,
-} from '../lib/products'
+import { deleteListing, myListings, saveListing, validPhone } from '../lib/listings'
+import { UNITS, deleteProduct, formatInr, myProducts, saveProduct } from '../lib/products'
+import { getPricing, offerLastDay, useMembership } from '../lib/membership'
+import { isNativeApp } from '../lib/platform'
 import { getFix, gpsMessage } from '../lib/gps'
 import { CATEGORY_ICONS } from './Nearby'
 import Camera from './Camera'
@@ -22,8 +22,11 @@ const kind = (id) => CATEGORIES.find((c) => c.id === id)?.label ?? id
  * itself on the riders' map. No sign-up fee — joining Trekov is free for
  * everyone; the only things ever sold are optional extras.
  */
-export default function Business({ onClose, onAuth }) {
+export default function Business({ onClose, onAuth, onPlans }) {
   const account = useStore((s) => s.account)
+  const membership = useMembership()
+  // Once paid plans are on, listing needs the business plan (unlimited listings and products).
+  const needsPlan = Boolean(membership?.paywallOn && !membership.isBusiness)
   const [list, setList] = useState(null)     // null while loading
   const [draft, setDraft] = useState(null)   // the listing being added or edited
   const [note, setNote] = useState('')
@@ -36,7 +39,7 @@ export default function Business({ onClose, onAuth }) {
 
   return (
     <div className="fixed inset-0 z-[1200] bg-black flex justify-center" role="dialog" aria-label={title}>
-      <div className="relative tk-shell h-full w-full flex flex-col bg-ink sm:border-x sm:border-line">
+      <div className="relative tk-shell h-full w-full flex flex-col bg-ink sm:border-x sm:border-line pt-safe px-safe">
         <header className="flex items-center gap-3 px-3 h-14 border-b border-line shrink-0">
           <button onClick={back} aria-label={draft ? 'Back' : 'Close'} className="p-2 text-mist hover:text-white">
             {draft ? <BackIcon size={20} /> : <CloseIcon size={20} />}
@@ -44,7 +47,7 @@ export default function Business({ onClose, onAuth }) {
           <h1 className="text-base font-semibold">{title}</h1>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto max-w-2xl mx-auto w-full">
           {!hasSupabase ? (
             <p className="p-5 text-sm text-mist">Business listings need the Trekov server, which isn't set up in this build.</p>
           ) : !account ? (
@@ -62,7 +65,7 @@ export default function Business({ onClose, onAuth }) {
                   <p className="text-base font-semibold">No listings yet</p>
                   <p className="text-sm text-mist mt-1 leading-relaxed">
                     Add your stay, dhaba, garage, fuel stop or rental. Riders nearby will find it in
-                    Discover, call you with one tap and navigate to your door. It's free.
+                    Discover, call you with one tap and navigate to your door.
                   </p>
                 </div>
               ) : (
@@ -71,15 +74,14 @@ export default function Business({ onClose, onAuth }) {
                                onDeleted={() => { setNote('Listing removed.'); load() }} />
                 ))
               )}
-              {list && (
-                <button onClick={() => { setNote(''); setDraft({ ...EMPTY }) }} disabled={list.length >= MAX_LISTINGS}
-                        className="w-full rounded-full bg-brand text-ink py-3 text-sm font-semibold disabled:opacity-40">
-                  {list.length ? '+ Add another business' : '+ List a business — free'}
+              {list && (needsPlan ? (
+                <BusinessOffer price={membership.businessPrice} onPlans={onPlans} />
+              ) : (
+                <button onClick={() => { setNote(''); setDraft({ ...EMPTY }) }}
+                        className="w-full rounded-full bg-brand text-ink py-3 text-sm font-semibold">
+                  {list.length ? '+ Add another business' : '+ List a business'}
                 </button>
-              )}
-              {list && list.length >= MAX_LISTINGS && (
-                <p className="text-xs text-mist text-center">You can list up to {MAX_LISTINGS} businesses.</p>
-              )}
+              ))}
             </div>
           )}
         </div>
@@ -89,6 +91,8 @@ export default function Business({ onClose, onAuth }) {
 }
 
 function Intro({ onAuth }) {
+  const [pricing, setPricing] = useState(null)
+  useEffect(() => { getPricing().then(setPricing) }, [])
   return (
     <div className="p-5 space-y-6">
       <div>
@@ -99,15 +103,20 @@ function Intro({ onAuth }) {
         </p>
       </div>
       <ul className="space-y-2.5 text-sm">
-        {['Free — no sign-up fee, no commission', 'Shows in Discover and trip planning near you',
-          'Edit or remove it any time',
-          `Optional: show rooms, rentals or a menu with prices — ${formatInr(PRODUCTS_PLAN_INR)}/month`].map((t) => (
+        {['Shows in Discover and trip planning near you', 'Rooms, rentals or a menu, with prices',
+          'Tap-to-call and directions to your door', 'Edit or remove it any time'].map((t) => (
           <li key={t} className="flex gap-2.5"><span className="text-brand font-bold">✓</span>{t}</li>
         ))}
       </ul>
+      {pricing?.offerActive && (
+        <p className="text-sm"><b className="text-brand">Pre-release offer:</b> listing your business is free until {offerLastDay(pricing.offerEndsAt)}.</p>
+      )}
+      {pricing?.paywallOn && !isNativeApp && (
+        <p className="text-sm">Business plan <b>₹{pricing.businessPrice}/year</b> — unlimited listings and products.</p>
+      )}
       <div className="flex gap-2">
         <button onClick={() => onAuth?.('signup')} className="flex-1 rounded-full bg-brand text-ink py-3 text-sm font-semibold">
-          Sign up free
+          Sign up
         </button>
         <button onClick={() => onAuth?.('signin')}
                 className="flex-1 rounded-full border border-line py-3 text-sm font-semibold hover:border-brand hover:text-brand">
@@ -179,6 +188,7 @@ function ListingForm({ initial, onCancel, onSaved }) {
   const [camera, setCamera] = useState(false)
   const [locating, setLocating] = useState(false)
   const [pinKey, setPinKey] = useState(0)            // remounts the map when the pin jumps
+  const [pinZoom, setPinZoom] = useState(16)         // street level at a real location, India-wide otherwise
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -186,12 +196,13 @@ function ListingForm({ initial, onCancel, onSaved }) {
     setLocating(true); setError('')
     try {
       const fix = await getFix()
-      setF((v) => ({ ...v, lat: +fix.lat.toFixed(5), lng: +fix.lng.toFixed(5) })); setPinKey((k) => k + 1)
+      setF((v) => ({ ...v, lat: +fix.lat.toFixed(5), lng: +fix.lng.toFixed(5) })); setPinZoom(16); setPinKey((k) => k + 1)
     } catch (e) {
       setError(gpsMessage(e.code))
     } finally { setLocating(false) }
   }
-  const pinOnMap = () => { setF((v) => ({ ...v, lat: 22.5, lng: 79.0 })); setPinKey((k) => k + 1) }
+  // No location yet: the whole of India, to find the town and tap it.
+  const pinOnMap = () => { setF((v) => ({ ...v, lat: 22.5, lng: 79.0 })); setPinZoom(5); setPinKey((k) => k + 1) }
 
   const problem = f.name.trim().length < 2 ? 'Add the name of your business.'
     : f.lat == null ? 'Set where your business is, so riders can navigate to it.'
@@ -214,7 +225,7 @@ function ListingForm({ initial, onCancel, onSaved }) {
     <form onSubmit={submit} className="p-4 space-y-5">
       <div>
         <span className={heading}>What kind of place?</span>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 min-[380px]:grid-cols-4 gap-2">
           {CATEGORIES.map((c) => {
             const Icon = CATEGORY_ICONS[c.id] ?? MountainIcon
             const on = f.category === c.id
@@ -272,7 +283,7 @@ function ListingForm({ initial, onCancel, onSaved }) {
           </div>
         ) : (
           <div className="space-y-2">
-            <PinMap key={pinKey} lat={f.lat} lng={f.lng} onMove={(a, b) => setF((v) => ({ ...v, lat: a, lng: b }))} />
+            <PinMap key={pinKey} lat={f.lat} lng={f.lng} zoom={pinZoom} onMove={(a, b) => setF((v) => ({ ...v, lat: a, lng: b }))} />
             <div className="flex items-center justify-between text-[11px] text-mist">
               <span className="tabular-nums">{f.lat}, {f.lng} · tap the map to move the pin</span>
               <button type="button" onClick={locate} disabled={locating} className="text-brand font-semibold">
@@ -307,11 +318,11 @@ function ListingForm({ initial, onCancel, onSaved }) {
 
       <div className="space-y-2 pb-4">
         <button type="submit" disabled={busy} className="w-full rounded-full bg-brand text-ink py-3 text-sm font-semibold disabled:opacity-50">
-          {busy ? 'Saving…' : initial.id ? 'Save changes' : 'List my business — free'}
+          {busy ? 'Saving…' : initial.id ? 'Save changes' : 'List my business'}
         </button>
         <button type="button" onClick={onCancel} className="w-full rounded-full border border-line py-2.5 text-sm font-semibold text-mist">Cancel</button>
         <p className="text-[11px] text-mist text-center leading-relaxed">
-          Free — no sign-up fee, no commission. Trekov removes listings that are fake or misleading.
+          Trekov removes listings that are fake or misleading.
         </p>
       </div>
 
@@ -321,7 +332,6 @@ function ListingForm({ initial, onCancel, onSaved }) {
   )
 }
 
-const fmtDate = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 const BLANK_PRODUCT = { name: '', price_inr: '', unit: '', description: '', available: true }
 
 /**
@@ -329,29 +339,15 @@ const BLANK_PRODUCT = { name: '', price_inr: '', unit: '', description: '', avai
  * need the monthly products plan, which Trekov switches on per listing.
  */
 function ProductsSection({ listing }) {
-  const active = planActive(listing)
+  const membership = useMembership()
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState(null)
   const [editing, setEditing] = useState(null)
   const [error, setError] = useState('')
   const load = () => myProducts(listing.id).then(setItems).catch((e) => { setItems([]); setError(e.message) })
-  useEffect(() => { if (active && open && items === null) load() }, [active, open])
-
-  if (!active) {
-    return (
-      <div className="mt-3 rounded-xl border border-dashed border-brand/40 p-3">
-        <p className="text-xs font-semibold">Show your rooms, rentals or menu with prices</p>
-        <p className="text-[11px] text-mist mt-0.5 leading-relaxed">
-          Products plan · {formatInr(PRODUCTS_PLAN_INR)}/month, unlimited products. Your listing stays free either way.
-        </p>
-        <a href={activationMailto(listing)}
-           className="mt-2 inline-block rounded-full bg-brand text-ink px-3 py-1.5 text-xs font-semibold">
-          Request the products plan
-        </a>
-        <p className="text-[10px] text-mist mt-1.5">Online payment is coming soon — we'll reply by email to set it up.</p>
-      </div>
-    )
-  }
+  useEffect(() => { if (open && items === null) load() }, [open])
+  // Products come with the business plan; without it the page offers the plan.
+  if (membership && !membership.isBusiness) return null
 
   const done = () => { setEditing(null); load() }
   return (
@@ -359,7 +355,7 @@ function ProductsSection({ listing }) {
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
               className="w-full flex items-center justify-between gap-2 text-left">
         <span className="text-xs font-semibold">Products & prices{items ? ` · ${items.length}` : ''}</span>
-        <span className="text-[10px] text-brand shrink-0">Plan active till {fmtDate(listing.products_until)}</span>
+        <span className="text-[11px] text-brand shrink-0">{open ? 'Hide' : 'Manage'}</span>
       </button>
       {open && (
         <div className="mt-2.5 space-y-2">
@@ -387,6 +383,29 @@ function ProductsSection({ listing }) {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Shown in place of "+ List a business" when the business plan is needed. */
+function BusinessOffer({ price, onPlans }) {
+  // Store billing rules: the apps neither sell the plan nor say where to buy it.
+  if (isNativeApp) {
+    return (
+      <p className="rounded-2xl border border-line p-4 text-xs text-mist leading-relaxed">
+        Listing a business needs a Trekov business account.
+      </p>
+    )
+  }
+  return (
+    <div className="rounded-2xl border border-brand/40 bg-brand/5 p-4">
+      <p className="text-sm font-semibold">Business plan · ₹{price}/year</p>
+      <p className="text-xs text-mist mt-1 leading-relaxed">
+        Unlimited listings and products, shown to riders nearby with tap-to-call and directions. Includes your rider account.
+      </p>
+      <button onClick={() => onPlans?.('business')} className="mt-3 w-full rounded-full bg-brand text-ink py-2.5 text-sm font-semibold">
+        Get the business plan
+      </button>
     </div>
   )
 }

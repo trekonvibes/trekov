@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { safeHref } from '../lib/safe'
 import {
-  selectPlace, selectLatestAt, selectOthersAt, selectTrips, addStop, createTrip, getUser,
+  selectPlace, selectLatestAt, selectOthersAt, canEditTrip, selectTrips, addStop, createTrip, getUser,
   meId, RATING_CATEGORIES, selectRatingsAt, toggleSavePlace, useStore,
 } from '../lib/store'
 import { ago, compact, formatDateTime, mapsUrl } from '../lib/format'
@@ -27,7 +28,9 @@ export default function PlaceSheet({ placeId, onClose, onNavigate, onPost }) {
   const post = useStore((s) => selectLatestAt(s, placeId))
   const others = useStore((s) => selectOthersAt(s, placeId))
   const ratings = useStore((s) => selectRatingsAt(s, placeId))
-  const trips = useStore(selectTrips)
+  const account = useStore((s) => s.account)
+  // Only trips this rider may change: the host's and the captain's (Punit, 2026-09-21).
+  const trips = useStore(selectTrips).filter((t) => canEditTrip(t, account?.id))
 
   if (!place) return null
 
@@ -53,12 +56,13 @@ export default function PlaceSheet({ placeId, onClose, onNavigate, onPost }) {
       <div className="fixed inset-0 z-[1000] flex items-end justify-center" role="dialog" aria-label={place.name}>
         <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
 
-        <div className="sheet-up relative tk-shell h-[86vh] flex flex-col rounded-t-3xl border-t border-line
-                        bg-ink overflow-hidden">
+        <div className="sheet-up relative tk-shell h-[86vh] supports-[height:1dvh]:h-[86dvh] flex flex-col rounded-t-3xl border-t border-line
+                        bg-ink overflow-hidden px-safe">
           {/* Pinned to the sheet rather than to the photo, so it stays
-              reachable once the photo has scrolled away. */}
+              reachable once the photo has scrolled away. Absolute, so it
+              clears a landscape notch itself rather than through px-safe. */}
           <button onClick={onClose}
-                  className="absolute top-3 right-3 z-20 rounded-full bg-black/55 backdrop-blur-sm p-1.5
+                  className="absolute top-3 right-[max(.75rem,env(safe-area-inset-right))] z-20 rounded-full bg-black/55 backdrop-blur-sm p-1.5
                              text-white/90 hover:text-white"
                   aria-label="Close">
             <CloseIcon size={20} />
@@ -75,7 +79,7 @@ export default function PlaceSheet({ placeId, onClose, onNavigate, onPost }) {
             {post ? (
               <button onClick={() => setOpenPost(post.id)} className="block w-full text-left">
                 <Media media={post.media} alt={place.name}
-                       className="w-full aspect-[16/11] max-h-[38vh] object-cover bg-raised" />
+                       className="w-full aspect-[16/11] max-h-[38vh] supports-[height:1dvh]:max-h-[38dvh] object-cover bg-raised" />
                 <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-brand text-ink
                                  text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1">
                   <StarIcon size={11} filled /> Featured
@@ -86,15 +90,15 @@ export default function PlaceSheet({ placeId, onClose, onNavigate, onPost }) {
               // A reference photo, credited, until the first live Trekov photo.
               <div className="relative">
                 <img src={place.photo.src} alt={place.name}
-                     className="w-full aspect-[16/11] max-h-[38vh] object-cover bg-raised" />
-                <a href={place.photo.page} target="_blank" rel="noreferrer"
+                     className="w-full aspect-[16/11] max-h-[38vh] supports-[height:1dvh]:max-h-[38dvh] object-cover bg-raised" />
+                <a href={safeHref(place.photo.page)} target="_blank" rel="noreferrer"
                    className="absolute top-3 left-3 max-w-[72%] truncate rounded-full bg-black/60 backdrop-blur-sm
                               text-[10px] text-white/85 px-2.5 py-1">
                   Photo: {place.photo.by} · {place.photo.license} · Wikimedia Commons
                 </a>
               </div>
             ) : (
-              <div className="w-full aspect-[16/11] max-h-[38vh] bg-raised flex flex-col items-center
+              <div className="w-full aspect-[16/11] max-h-[38vh] supports-[height:1dvh]:max-h-[38dvh] bg-raised flex flex-col items-center
                               justify-center text-center px-8">
                 <p className="text-sm text-mist">No photo here yet.</p>
                 <p className="mt-1 text-xs text-mist">Take the first one and it holds the banner.</p>

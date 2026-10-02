@@ -213,10 +213,8 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
 
       {/* ----------------------------------------------------------- stays */}
       {stays && (stays.partners.length > 0 || stays.others.length > 0) && (
-        <div className="rounded-2xl border border-line bg-surface p-3">
-          <h3 className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-mist mb-2">
-            <BedIcon size={13} /> Stays near {last.name}
-          </h3>
+        <Fold icon={<BedIcon size={13} />} title={`Stays near ${last.name}`}
+              count={stays.partners.length + stays.others.length}>
 
           {stays.partners.map((p) => (
             <div key={p.id} className="rounded-xl border border-brand/50 bg-brand/5 p-2.5 mb-1.5">
@@ -294,15 +292,12 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
               )}
             </>
           )}
-        </div>
+        </Fold>
       )}
 
       {/* ----------------------------------------------------- attractions */}
       {seeThere.length > 0 && (
-        <div className="rounded-2xl border border-line bg-surface p-3">
-          <h3 className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-mist mb-2">
-            <MountainIcon size={13} /> Also worth seeing near {last.name}
-          </h3>
+        <Fold icon={<MountainIcon size={13} />} title={`Also worth seeing near ${last.name}`} count={seeThere.length}>
           <ul className="space-y-1">
             {seeThere.map((a) => (
               <li key={a.id} className="flex items-center gap-2 text-[12px]">
@@ -326,7 +321,7 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
               </li>
             ))}
           </ul>
-        </div>
+        </Fold>
       )}
 
       {navTo && <NavigateSheet place={navTo} onClose={() => setNavTo(null)} />}
@@ -338,5 +333,26 @@ export default function TripSuggestions({ trip, places, onOpenPlace }) {
         </p>
       )}
     </section>
+  )
+}
+
+/**
+ * A suggestions list that starts closed: its title and how many there are.
+ * Stays and sights ran to a dozen rows each and pushed the riders and the trip
+ * itself far down the page (Punit, 2026-09-13), so they open on a tap.
+ */
+function Fold({ icon, title, count, children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-2xl border border-line bg-surface">
+      <button onClick={() => setOpen((v) => !v)} aria-expanded={open}
+              className="w-full flex items-center gap-2 p-3 text-left">
+        <span className="text-mist shrink-0">{icon}</span>
+        <span className="min-w-0 flex-1 truncate text-[11px] uppercase tracking-[0.12em] text-mist">{title}</span>
+        <span className="shrink-0 rounded-full bg-raised text-[10px] font-semibold text-mist px-2 py-0.5">{count}</span>
+        <span aria-hidden="true" className={`shrink-0 text-mist text-xs transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+      {open && <div className="px-3 pb-3">{children}</div>}
+    </div>
   )
 }

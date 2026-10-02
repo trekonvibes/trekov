@@ -7,6 +7,27 @@
     "iosScheme": "https",
     "hostname": "trekov.com"
   },
-  "android": { "allowMixedContent": false },
-  "ios": { "contentInset": "always" }
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0B0F0E"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0B0F0E"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "appReadyTimeout": 15000,
+      "resetWhenUpdate": true,
+      "statsUrl": ""
+    },
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    },
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
 }

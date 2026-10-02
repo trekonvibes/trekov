@@ -1,17 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
-  deleteTrip, getPlace, moveStop, removeStop, setStopNote, updateTrip, useStore,
+  canEditTrip, completeTrip, deleteTrip, getPlace, isCompleted, moveStop, removeStop, reopenTrip, setStopNote, updateTrip, useStore,
 } from '../lib/store'
-import { encodeTrip, shareLink } from '../lib/share'
+import { shareLink, shortTripLink } from '../lib/share'
+import { syncNow } from '../lib/sync'
 import { mapsUrl } from '../lib/format'
 import { distance as straightLine, formatDistance, formatDuration } from '../lib/geo'
 import { getTripRoute } from '../lib/route'
 import { baseOf } from '../lib/vehicleArt'
-import { BackIcon, CalendarIcon, CloseIcon, PlusIcon, SendIcon } from './Icons'
+import { BackIcon, CalendarIcon, CloseIcon, DoneIcon, NavIcon, PlusIcon, ReelIcon, SendIcon } from './Icons'
 import AddStop from './AddStop'
 import Bookings from './Bookings'
 import TripSuggestions from './TripSuggestions'
 import Invite from './Invite'
+import RouteVideo from './RouteVideo'
 
 // Road distance and time between consecutive stops, for the vehicle chosen
 // last in navigation (bikes route as two-wheelers). Kept for the session so
@@ -57,10 +59,15 @@ const MSG = {
 
 export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
   const places = useStore((s) => s.places)
+  const account = useStore((s) => s.account)
+  // A group trip if it says so, has members, or someone else owns it.
+  const group = trip.kind === 'group' || trip.members?.length > 0 || Boolean(trip.ownerId && trip.ownerId !== account?.id)
   const [msg, setMsg] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [addingStop, setAddingStop] = useState(false)
   const [link, setLink] = useState('')
+  const [makingVideo, setMakingVideo] = useState(false)
+  // Only the host and the captain change the plan (Punit, 2026-09-21).
+  const editable = canEditTrip(trip, account?.id)
 
   const stops = trip.stops.map((s) => ({ ...s, place: getPlace(s.placeId) })).filter((s) => s.place)
   const { legs, mode } = useLegs(stops)
@@ -68,7 +75,8 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
   const totalTime = legs?.every((l) => l.duration != null) ? legs.reduce((n, l) => n + l.duration, 0) : null
 
   async function share() {
-    const url = encodeTrip(trip, places)
+    // Short when signed in and online; the long, self-contained link otherwise.
+    const url = await shortTripLink(trip, places)
     setLink(url)
     const result = await shareLink(url, trip.title)
     setMsg(MSG[result])
@@ -89,6 +97,7 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
         <input
           value={trip.title}
           onChange={(e) => updateTrip(trip.id, { title: e.target.value })}
+          readOnly={!editable}
           aria-label="Trip name"
           className="flex-1 min-w-0 bg-transparent text-lg font-semibold outline-none focus:bg-raised rounded-lg px-2 py-1"
         />
@@ -101,7 +110,7 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
           snapped it back, so the next tap landed on the wrong button (a stop's
           remove ×, in testing). */}
       {msg && (
-        <p role="status" className="fixed left-1/2 -translate-x-1/2 bottom-24 z-50 rounded-full bg-white text-ink
+        <p role="status" className="fixed left-1/2 -translate-x-1/2 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 rounded-full bg-white text-ink
                                      text-sm font-medium px-4 py-2 shadow-lg pointer-events-none">{msg}</p>
       )}
       {link && (
@@ -109,22 +118,26 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
       )}
 
       <div className="p-4 space-y-4">
+        <CompletedBanner trip={trip} />
+
+        {!editable && (
+          <p className="rounded-xl border border-line px-3 py-2 text-xs text-mist">
+            Only the host and the captain can change this trip's name, dates, itinerary and bookings.
+          </p>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1 text-xs text-mist">
+          <label className="flex flex-col gap-1 text-xs text-mist min-w-0">
             <span className="flex items-center gap-1.5"><CalendarIcon size={13} /> From</span>
-            <input type="date" value={trip.start} onChange={(e) => updateTrip(trip.id, { start: e.target.value })} className={field} />
+            <DateField value={trip.start} onChange={(start) => updateTrip(trip.id, { start })} className={field} disabled={!editable} />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-mist">
+          <label className="flex flex-col gap-1 text-xs text-mist min-w-0">
             <span className="flex items-center gap-1.5"><CalendarIcon size={13} /> To</span>
-            <input type="date" value={trip.end} onChange={(e) => updateTrip(trip.id, { end: e.target.value })} className={field} />
+            <DateField value={trip.end} onChange={(end) => updateTrip(trip.id, { end })} className={field} disabled={!editable} />
           </label>
         </div>
 
-        <textarea
-          value={trip.notes} onChange={(e) => updateTrip(trip.id, { notes: e.target.value })}
-          placeholder="Trip notes — permits, who's driving, what to book first…"
-          className={`${field} w-full min-h-20 resize-none`}
-        />
+        <NotesBox value={trip.notes} onChange={(notes) => updateTrip(trip.id, { notes })} className={field} readOnly={!editable} />
 
         <div className="flex items-center justify-between pt-2">
           <h2 className="text-xs uppercase tracking-[0.14em] text-mist">
@@ -135,20 +148,50 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
               </span>
             )}
           </h2>
-          <button onClick={() => setAddingStop((v) => !v)}
-                  className="flex items-center gap-1 text-xs font-semibold text-brand">
-            <PlusIcon size={14} /> Add
-          </button>
+          {editable && (
+            <button onClick={() => setAddingStop((v) => !v)}
+                    className="flex items-center gap-1 text-xs font-semibold text-brand">
+              <PlusIcon size={14} /> Add
+            </button>
+          )}
         </div>
 
-        {addingStop && (
+        {/* The whole trip, every stop in order from the first. A finished trip
+            doesn't offer to go live again; "Navigate here" on a stop still works. */}
+        {stops.length > 0 && !isCompleted(trip) && (
+          <button onClick={() => onNavigate?.(stops[0].placeId, trip.id)}
+                  className="w-full min-h-12 flex items-center justify-center gap-2 rounded-full bg-brand text-ink py-3 text-sm font-semibold shadow-lg active:scale-[0.98] transition">
+            {group
+              ? <><span className="size-2 rounded-full bg-ink animate-pulse" aria-hidden /> Go live with the group</>
+              : <><NavIcon size={16} filled /> Start trip</>}
+            <span className="font-normal opacity-80">· {stops.length} stop{stops.length === 1 ? '' : 's'}</span>
+          </button>
+        )}
+
+        {/* Riders were already screenshotting the map to post it. Two stops is
+            the least that makes a route worth watching. */}
+        {stops.length > 1 && (
+          <button onClick={() => setMakingVideo(true)}
+                  className="w-full min-h-11 flex items-center justify-center gap-2 rounded-full border border-line
+                             text-sm font-semibold text-mist hover:text-white hover:border-brand/60 transition">
+            <ReelIcon size={16} /> Route animator
+          </button>
+        )}
+
+        <CompleteTrip trip={trip} stops={stops} onDone={() => flash('Trip completed. Nice ride!')} />
+
+        {makingVideo && <RouteVideo trip={trip} onClose={() => setMakingVideo(false)} />}
+
+        {addingStop && editable && (
           <AddStop trip={trip} onAdded={(name) => { setAddingStop(false); flash(`${name} added`) }} />
         )}
 
         {stops.length === 0 && !addingStop ? (
           <p className="text-sm text-mist leading-relaxed py-6">
-            No stops yet. Add one above, or open a place on the map and choose{' '}
-            <span className="text-brand">Add to trip</span>.
+            {editable ? (
+              <>No stops yet. Add one above, or open a place on the map and choose{' '}
+                <span className="text-brand">Add to trip</span>.</>
+            ) : 'No stops yet. The host or the captain will add them.'}
           </p>
         ) : stops.length === 0 ? null : (
           <ol className="space-y-3">
@@ -177,24 +220,36 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    <button onClick={() => moveStop(trip.id, i, -1)} disabled={i === 0}
-                            className="text-mist hover:text-white disabled:opacity-25 text-xs" aria-label="Move up">▲</button>
-                    <button onClick={() => moveStop(trip.id, i, 1)} disabled={i === stops.length - 1}
-                            className="text-mist hover:text-white disabled:opacity-25 text-xs" aria-label="Move down">▼</button>
-                  </div>
-                  <button onClick={() => removeStop(trip.id, s.placeId)}
-                          className="text-mist hover:text-rose p-1 shrink-0" aria-label={`Remove ${s.place.name}`}>
-                    <CloseIcon size={16} />
-                  </button>
+                  {/* 40px targets; the negative margins keep the card its size.
+                      Side by side, not stacked: stacked they were taller than the
+                      name and left a blank band above the note (iPhone,
+                      2026-09-13). Nothing to reorder with one stop. */}
+                  {editable && stops.length > 1 && (
+                    <div className="flex items-center -my-2 shrink-0">
+                      <button onClick={() => moveStop(trip.id, i, -1)} disabled={i === 0}
+                              className="grid place-items-center size-10 text-mist hover:text-white disabled:opacity-25 text-xs" aria-label="Move up">▲</button>
+                      <button onClick={() => moveStop(trip.id, i, 1)} disabled={i === stops.length - 1}
+                              className="grid place-items-center size-10 text-mist hover:text-white disabled:opacity-25 text-xs" aria-label="Move down">▼</button>
+                    </div>
+                  )}
+                  {editable && (
+                    <button onClick={() => removeStop(trip.id, s.placeId)}
+                            className="grid place-items-center size-10 -m-2 shrink-0 text-mist hover:text-rose" aria-label={`Remove ${s.place.name}`}>
+                      <CloseIcon size={16} />
+                    </button>
+                  )}
                 </div>
 
-                <input
-                  value={s.note}
-                  onChange={(e) => setStopNote(trip.id, s.placeId, e.target.value)}
-                  placeholder="Note — nights, booking, who to call…"
-                  className={`${field} w-full mt-2 text-xs`}
-                />
+                {editable ? (
+                  <input
+                    value={s.note}
+                    onChange={(e) => setStopNote(trip.id, s.placeId, e.target.value)}
+                    placeholder="Note — nights, booking, who to call…"
+                    className={`${field} w-full mt-2 text-xs`}
+                  />
+                ) : s.note ? (
+                  <p className="mt-2 text-xs text-mist whitespace-pre-line">{s.note}</p>
+                ) : null}
                 <div className="flex items-center gap-3 mt-2">
                   <button onClick={() => onNavigate?.(s.placeId, trip.id)}
                           className="text-xs text-brand font-semibold">Navigate here</button>
@@ -207,7 +262,7 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
           </ol>
         )}
 
-        <TripSuggestions trip={trip} places={places} onOpenPlace={onOpenPlace} />
+        {editable && <TripSuggestions trip={trip} places={places} onOpenPlace={onOpenPlace} />}
 
         {trip.kind === 'group' ? (
           <Invite trip={trip} />
@@ -221,31 +276,247 @@ export default function TripDetail({ trip, onBack, onOpenPlace, onNavigate }) {
           </button>
         )}
 
-        <Bookings trip={trip} destination={stops.at(-1)?.place?.name ?? ''} />
+        <Bookings trip={trip} destination={stops.at(-1)?.place?.name ?? ''} editable={editable} />
 
-        {/* An inline confirm, not window.confirm: Chrome suppresses native
-            dialogs after a page has shown a few, and a suppressed confirm()
-            returns false silently — so deleting simply stopped working with
-            nothing to explain why. */}
-        {confirmDelete ? (
-          <div className="flex items-center gap-2 pt-4">
-            <span className="text-xs text-mist flex-1">Delete “{trip.title}” for good?</span>
-            <button onClick={() => setConfirmDelete(false)}
-                    className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold">
-              Keep
-            </button>
-            <button onClick={() => { deleteTrip(trip.id); onBack() }}
-                    className="rounded-full bg-rose text-white px-3 py-1.5 text-xs font-semibold">
-              Delete
-            </button>
-          </div>
-        ) : (
-          <button onClick={() => setConfirmDelete(true)}
-                  className="text-xs text-mist underline underline-offset-4 hover:text-rose pt-4">
-            Delete trip
-          </button>
-        )}
+        <DeleteTrip trip={trip} onDeleted={onBack} />
       </div>
     </>
+  )
+}
+
+const doneOn = (iso) => {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) })
+}
+
+/** Only the host marks a group trip done — the server keeps their copy (see sync.js). */
+const canComplete = (trip, account) => !trip.ownerId || !account || trip.ownerId === account.id
+
+/**
+ * "Mark as completed" (Punit, 2026-09-21). Offered once the trip has somewhere
+ * to go; confirmed inline, as with delete, because it ends the ride for the
+ * whole group.
+ */
+function CompleteTrip({ trip, stops, onDone }) {
+  const account = useStore((s) => s.account)
+  const [confirm, setConfirm] = useState(false)
+  if (isCompleted(trip) || stops.length === 0 || !canComplete(trip, account)) return null
+  const group = trip.kind === 'group' || trip.members?.length > 0
+
+  function done() {
+    completeTrip(trip.id)
+    if (account) syncNow(account.id)
+    setConfirm(false)
+    onDone?.()
+  }
+
+  if (!confirm) {
+    return (
+      <button onClick={() => setConfirm(true)}
+              className="w-full min-h-11 flex items-center justify-center gap-2 rounded-full border border-line
+                         text-sm font-semibold text-mist hover:text-white hover:border-brand/60 transition">
+        <DoneIcon size={17} /> Mark trip as completed
+      </button>
+    )
+  }
+  return (
+    <div className="rounded-2xl border border-brand/40 bg-brand/10 p-3 space-y-2">
+      <p className="text-sm">
+        Done with “{trip.title}”? It moves to Completed{group ? ' for everyone on it' : ''}
+        {trip.visibility === 'public' ? ' and comes off Open Rides' : ''}. You can reopen it any time.
+      </p>
+      <div className="flex gap-2 justify-end">
+        <button onClick={() => setConfirm(false)}
+                className="rounded-full border border-line px-3.5 py-1.5 text-xs font-semibold">Not yet</button>
+        <button onClick={done}
+                className="rounded-full bg-brand text-ink px-3.5 py-1.5 text-xs font-semibold">Mark completed</button>
+      </div>
+    </div>
+  )
+}
+
+function CompletedBanner({ trip }) {
+  const account = useStore((s) => s.account)
+  if (!isCompleted(trip)) return null
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-brand/40 bg-brand/10 px-3.5 py-3">
+      <DoneIcon size={22} className="text-brand shrink-0" />
+      <p className="flex-1 min-w-0 text-sm">
+        <span className="font-semibold">Completed</span>
+        {doneOn(trip.completedAt) && <span className="text-mist"> · {doneOn(trip.completedAt)}</span>}
+      </p>
+      {canComplete(trip, account) && (
+        <button onClick={() => { reopenTrip(trip.id); if (account) syncNow(account.id) }}
+                className="text-xs font-semibold text-brand px-2 py-1">Reopen</button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Deleting a trip reaches the server too — before, the next sync brought it
+ * straight back (Punit, 2026-09-11). A trip someone else owns isn't yours to
+ * delete: you leave it instead (sync.js pushDeletions), and it drops off the
+ * owner's rider list.
+ */
+function DeleteTrip({ trip, onDeleted }) {
+  const account = useStore((s) => s.account)
+  const [confirm, setConfirm] = useState(false)
+  const theirs = Boolean(trip.ownerId && account && trip.ownerId !== account.id)
+  const shared = trip.kind === 'group' || trip.members?.length > 0
+
+  function remove() {
+    deleteTrip(trip.id)
+    if (account) syncNow(account.id)
+    onDeleted()
+  }
+
+  // An inline confirm, not window.confirm: Chrome suppresses native dialogs
+  // after a page has shown a few, and a suppressed confirm() returns false
+  // silently — so deleting simply stopped working with nothing to explain why.
+  if (!confirm) {
+    return (
+      <button onClick={() => setConfirm(true)}
+              className="text-xs text-mist underline underline-offset-4 hover:text-rose pt-4">
+        {theirs ? 'Leave trip' : 'Delete trip'}
+      </button>
+    )
+  }
+  return (
+    <div className="flex items-center gap-2 pt-4">
+      <span className="text-xs text-mist flex-1">
+        {theirs
+          ? `Leave “${trip.title}”? It goes from your trips and the group stops seeing you on it. The owner can invite you again.`
+          : `Delete “${trip.title}” for good?${shared ? ' It goes for everyone on it.' : ''}`}
+      </span>
+      <button onClick={() => setConfirm(false)}
+              className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold">
+        Keep
+      </button>
+      <button onClick={remove} className="rounded-full bg-rose text-white px-3 py-1.5 text-xs font-semibold">
+        {theirs ? 'Leave' : 'Delete'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Trip notes, folded until you want them.
+ *
+ * A group's notes are often a whole invite — dates, venue, fees, what is
+ * included, who to call. A fixed three-line box hid most of it; growing the box
+ * to fit then covered the whole screen (Punit, 2026-09-13). So the trip shows the
+ * first few lines, and a tap opens the full note to read or edit; Done folds it
+ * away again. With no notes yet it is a single "Add trip notes" line.
+ */
+function NotesBox({ value, onChange, className, readOnly = false }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const cardRef = useRef(null)
+  const typeNow = useRef(false)   // an empty note is opened to write in, so the cursor goes straight in
+  useEffect(() => {
+    if (open && typeNow.current) { typeNow.current = false; ref.current?.focus({ preventScroll: true }) }
+  }, [open])
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!open || !el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight + 2, window.innerHeight * 0.6)}px`
+  }, [value, open])
+  // Opening a note is for reading it, so no cursor and no keyboard: tap into
+  // the text to edit. It used to focus straight away, and on iPhone the
+  // keyboard that brought up is what wrecked the page when Done folded it.
+
+  // Fold in order: let the keyboard go first, then drop the box, then nudge the
+  // scroll by a pixel. Safari on iPhone does not always repaint a scrolling
+  // area that just lost a tall box under an open keyboard — it left the whole
+  // trip below the notes blank until you scrolled (reported 2026-09-13).
+  const fold = () => {
+    ref.current?.blur()
+    requestAnimationFrame(() => {
+      setOpen(false)
+      requestAnimationFrame(() => {
+        const card = cardRef.current
+        if (!card) return
+        let el = card.parentElement
+        while (el && !(el.scrollHeight > el.clientHeight && /(auto|scroll)/.test(getComputedStyle(el).overflowY))) el = el.parentElement
+        if (el) { el.scrollTop += 1; el.scrollTop -= 1 }
+        card.scrollIntoView({ block: 'nearest' })
+      })
+    })
+  }
+
+  const text = (value ?? '').trim()
+  // The preview skips blank lines, so three lines of it are three lines of the
+  // note — an invite that opens with a title and a gap previewed one line.
+  // The note itself is left exactly as written.
+  const preview = text.replace(/\n\s*\n+/g, '\n')
+
+  // A rider who can't change the notes reads them, and sees nothing to add.
+  if (readOnly && !text) return null
+  if (!open) {
+    return text ? (
+      <button ref={cardRef} type="button" onClick={() => setOpen(true)} aria-expanded="false"
+              className="block w-full text-left bg-raised rounded-xl px-3 py-2.5 hover:ring-1 hover:ring-brand/40 transition">
+        <span className="flex items-center justify-between mb-1">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-mist">Notes</span>
+          <span className="text-[11px] font-semibold text-brand">Read all ▾</span>
+        </span>
+        {/* No `block` on the text: line-clamp sets its own display, and `block`
+            beat it — the preview showed all 22 lines of a long invite instead of
+            three. The *button* is block, though: left inline, iPhone lines it up
+            by the last line of its text — the eighth, hidden one — and left the
+            room for the hidden lines as an empty band under the card (found on the
+            iOS simulator, 2026-09-13). The max-height is the backstop: three
+            lines at this line height, whatever an engine does with the clamp. */}
+        <span className="text-sm leading-relaxed whitespace-pre-line line-clamp-3 overflow-hidden"
+              style={{ maxHeight: '4.875em' }}>{preview}</span>
+      </button>
+    ) : (
+      <button ref={cardRef} type="button" onClick={() => { typeNow.current = true; setOpen(true) }}
+              className="block w-full text-left bg-raised rounded-xl px-3 py-2.5 text-sm text-mist hover:text-white transition">
+        + Add trip notes — permits, who's driving, what to book first
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-raised rounded-xl">
+      <div className="flex items-center justify-between px-3 pt-2.5">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-mist">Notes</span>
+        <button type="button" onClick={fold} aria-expanded="true"
+                className="text-[11px] font-semibold text-brand px-1 -mr-1">{readOnly ? 'Close ▴' : 'Done ▴'}</button>
+      </div>
+      <textarea
+        ref={ref} value={value} rows={5} readOnly={readOnly}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Trip notes — permits, who's driving, what to book first…"
+        className={`${className} bg-transparent w-full min-h-28 resize-none leading-relaxed overflow-y-auto focus:ring-0`}
+      />
+    </div>
+  )
+}
+
+/**
+ * A date input that says so when it is empty. iPhone draws an empty date field
+ * as a blank box — no placeholder, nothing to suggest it can be tapped — so a
+ * new trip showed two empty grey boxes under From and To (simulator,
+ * 2026-09-13). The hint sits on top and lets taps through to the real input.
+ * iPhone also gives a date input a minimum width of its own, which pushed "To"
+ * off the right edge; appearance-none and min-w-0 let it fit its column.
+ */
+function DateField({ value, onChange, className, disabled = false }) {
+  return (
+    <span className="relative block min-w-0">
+      <input type="date" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}
+             className={`${className} block w-full min-w-0 min-h-10 appearance-none text-left [&::-webkit-date-and-time-value]:text-left ${value ? '' : 'text-transparent'}`} />
+      {!value && (
+        <span aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-mist">
+          {disabled ? 'Not set' : 'Add date'}
+        </span>
+      )}
+    </span>
   )
 }

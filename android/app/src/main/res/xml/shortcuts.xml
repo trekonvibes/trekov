@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the Trekov icon: the three things riders open it for. They go
+     through the app's own links (AndroidManifest intent-filter), so each one
+     lands on the right screen. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="group-trip"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_group_short"
+        android:shortcutLongLabel="@string/shortcut_group_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.trekov.app"
+            android:targetClass="com.trekov.app.MainActivity"
+            android:data="https://trekov.com/app/#trips" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="map"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_map_short"
+        android:shortcutLongLabel="@string/shortcut_map_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.trekov.app"
+            android:targetClass="com.trekov.app.MainActivity"
+            android:data="https://trekov.com/app/#map" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="post"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_post_short"
+        android:shortcutLongLabel="@string/shortcut_post_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.trekov.app"
+            android:targetClass="com.trekov.app.MainActivity"
+            android:data="https://trekov.com/app/#discover" />
+    </shortcut>
+</shortcuts>

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -22,7 +24,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Trekov links open Trekov. A trip invite shared in WhatsApp lands
+                 in the app rather than a browser tab; Android checks the claim
+                 against https://trekov.com/.well-known/assetlinks.json, which
+                 carries this app's signing fingerprint. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="trekov.com" android:pathPrefix="/app/" />
+                <data android:scheme="https" android:host="trekov.com" android:pathPrefix="/i/" />
+                <data android:scheme="https" android:host="www.trekov.com" android:pathPrefix="/app/" />
+                <data android:scheme="https" android:host="www.trekov.com" android:pathPrefix="/i/" />
+            </intent-filter>
+
+            <!-- Long-press the launcher icon. -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+
         </activity>
+
+        <!-- Google Navigation SDK. Empty when no key is configured, and the app
+             then keeps its web navigation (see TrekovNavPlugin). -->
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${TREKOV_NAV_KEY}" />
+
+        <!-- Only this app starts its live-trip service. -->
+        <service android:name="com.equimaps.capacitor_background_geolocation.BackgroundGeolocationService"
+            android:exported="false" tools:replace="android:exported" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -44,9 +71,15 @@
          rather than refuse. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Guidance has to survive the screen going off on a bike mount. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- No background location. On a group trip the rider's position keeps
+         going to the group with the screen off through a foreground service
+         with an ongoing notification (FOREGROUND_SERVICE_LOCATION, from the
+         background-geolocation plugin) — that needs Play's foreground-service
+         declaration, not background location. Libraries ask for more than
+         Trekov uses; these are taken back out (launch audit, 2026-09-14). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
 
     <!-- Place photos are taken in the app, never picked from a gallery. -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -58,7 +91,16 @@
     <!-- Offline map tiles and cached routes. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- The Rider ID on the lock screen (TrekovSafetyPlugin): the notification
+         that carries it, and the lock wallpaper a rider can opt into. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
     <!-- Declared so the Play listing does not imply a phone is required. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <!-- tools:replace: the background-location plugin declares GPS as required,
+         which would hide Trekov on Play from phones without it. Navigation wants
+         GPS, but browsing the map and planning a trip do not. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false"
+        tools:replace="android:required" />
 </manifest>

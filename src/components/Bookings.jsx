@@ -34,7 +34,7 @@ const SEARCH = {
 const field = 'bg-raised rounded-xl px-3 py-2 text-sm outline-none placeholder:text-mist focus:ring-2 focus:ring-brand/50'
 const blank = { mode: 'train', provider: '', ref: '', from: '', to: '', start: '', end: '', cost: '', notes: '' }
 
-export default function Bookings({ trip, destination }) {
+export default function Bookings({ trip, destination, editable = true }) {
   const bookings = useStore((s) => selectBookings(s, trip.id))
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(blank)
@@ -61,19 +61,23 @@ export default function Bookings({ trip, destination }) {
         <h2 className="text-xs uppercase tracking-[0.14em] text-mist">
           Transport &amp; stays{bookings.length > 0 && ` · ${bookings.length}`}
         </h2>
-        <button onClick={() => setAdding((v) => !v)} className="flex items-center gap-1 text-xs font-semibold text-brand">
-          <PlusIcon size={14} /> Add
-        </button>
+        {/* Only the host and the captain change the bookings (Punit, 2026-09-21). */}
+        {editable && (
+          <button onClick={() => setAdding((v) => !v)} className="flex items-center gap-1 text-xs font-semibold text-brand">
+            <PlusIcon size={14} /> Add
+          </button>
+        )}
       </div>
 
       {bookings.length === 0 && !adding && (
         <p className="text-sm text-mist leading-relaxed">
-          Nothing booked yet. Add a train, bus, flight, rental or stay to keep the
-          whole trip in one place.
+          {editable
+            ? 'Nothing booked yet. Add a train, bus, flight, rental or stay to keep the whole trip in one place.'
+            : 'Nothing booked yet. The host or the captain adds the bookings here.'}
         </p>
       )}
 
-      {adding && (
+      {adding && editable && (
         <form onSubmit={submit} className="space-y-2 bg-surface border border-line rounded-2xl p-3 mb-3">
           <div className="flex gap-1.5 overflow-x-auto no-bar">
             {MODES.map((m) => (
@@ -145,10 +149,12 @@ export default function Bookings({ trip, destination }) {
                   {b.notes && <p className="text-xs text-white/80 mt-1">{b.notes}</p>}
                 </div>
                 {b.cost && <span className="text-sm tabular-nums shrink-0">₹{b.cost}</span>}
-                <button onClick={() => removeBooking(trip.id, b.id)} className="text-mist hover:text-rose p-1 shrink-0"
-                        aria-label="Remove booking">
-                  <CloseIcon size={15} />
-                </button>
+                {editable && (
+                  <button onClick={() => removeBooking(trip.id, b.id)} className="text-mist hover:text-rose p-1 shrink-0"
+                          aria-label="Remove booking">
+                    <CloseIcon size={15} />
+                  </button>
+                )}
               </div>
             </li>
           )

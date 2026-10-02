@@ -6,7 +6,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-export const TMP = '/private/tmp/claude-501/-Users-punit/d9491b78-997c-436f-975f-f7478e1793e5/scratchpad'
+export const TMP = '/private/tmp/claude-501/-Users-punit/b012c678-123c-498a-8f12-6393691edd09/scratchpad'
 export const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'assets', 'rec')
 
 export async function connect(port = 9333) {

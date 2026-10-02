@@ -1,13 +1,26 @@
 import { useEffect, useState } from 'react'
-import { createTrip, getPlace, selectSavedPlaces, selectTrips, toggleSavePlace, useStore } from '../lib/store'
-import { CalendarIcon, CloseIcon, Logo, NavIcon, PlusIcon } from './Icons'
+import { createTrip, getPlace, isCompleted, selectSavedPlaces, selectTrips, toggleSavePlace, useStore } from '../lib/store'
+import { CalendarIcon, CloseIcon, DoneIcon, Logo, NavIcon, PlusIcon } from './Icons'
 import Media from './Media'
 import TripDetail from './TripDetail'
+import Invitations from './Invitations'
+import OpenRides from './OpenRides'
 
+// "20 Sept – 22 Sept", "20 Sept" for a one-day ride, the year only when it isn't this one.
+const day = (d) => {
+  const date = new Date(`${d}T00:00`)
+  if (Number.isNaN(date.getTime())) return d
+  const opts = { day: 'numeric', month: 'short', ...(date.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) }
+  return date.toLocaleDateString(undefined, opts)
+}
 const dateRange = (t) =>
-  t.start && t.end ? `${t.start} → ${t.end}` : t.start || t.end || 'No dates yet'
+  t.start && t.end
+    ? (t.start === t.end ? day(t.start) : `${day(t.start)} – ${day(t.end)}`)
+    : t.start || t.end ? day(t.start || t.end) : 'No dates yet'
 
 export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup = 0 }) {
+  const account = useStore((s) => s.account)
+  const isGroup = (t) => t.kind === 'group' || t.members?.length > 0 || Boolean(t.ownerId && t.ownerId !== account?.id)
   const trips = useStore(selectTrips)
   const saved = useStore(selectSavedPlaces)
   const [title, setTitle] = useState('')
@@ -16,7 +29,9 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup 
   const [kind, setKind] = useState('group')
   // The map's "Start a group trip" lands here with the form open.
   useEffect(() => { if (newGroup) { setAdding(true); setKind('group') } }, [newGroup])
-  const ordered = [...trips].sort((a, b) => (b.kind === 'group') - (a.kind === 'group'))
+  const ordered = [...trips].filter((t) => !isCompleted(t)).sort((a, b) => isGroup(b) - isGroup(a))
+  // Ridden trips go below, newest finish first (Punit, 2026-09-21).
+  const done = trips.filter(isCompleted).sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt)))
 
   if (open) {
     const trip = trips.find((t) => t.id === open)
@@ -40,6 +55,9 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup 
           <PlusIcon size={18} /> New
         </button>
       </header>
+
+      <Invitations onOpen={onOpen} />
+      <OpenRides />
 
       {adding && (
         <form onSubmit={submit} className="p-4 space-y-3 border-b border-line">
@@ -68,7 +86,7 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup 
         </form>
       )}
 
-      {!adding && !trips.some((t) => t.kind === 'group') && (
+      {!adding && !trips.some(isGroup) && (
         <section className="mx-4 mt-4 rounded-2xl border border-brand/40 bg-brand/10 p-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand">Group trips</p>
           <h2 className="text-lg font-semibold mt-1">Ride together, live</h2>
@@ -108,10 +126,11 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup 
                         <CalendarIcon size={9} /> {p.bestTime}
                       </span>
                     )}
+                    {/* 40px targets; negative margins keep the row and card their size. */}
                     <button onClick={() => onNavigate?.(p.id)} aria-label={`Navigate to ${p.name}`}
-                            className="ml-auto text-brand"><NavIcon size={13} filled /></button>
+                            className="ml-auto -my-3 -mr-1.5 grid place-items-center size-10 text-brand"><NavIcon size={13} filled /></button>
                     <button onClick={() => toggleSavePlace(p.id)} aria-label={`Remove ${p.name}`}
-                            className="text-mist hover:text-rose"><CloseIcon size={13} /></button>
+                            className="-my-3 -mr-2.5 grid place-items-center size-10 text-mist hover:text-rose"><CloseIcon size={13} /></button>
                   </div>
                 </div>
               </li>
@@ -133,48 +152,86 @@ export default function Trips({ onOpenPlace, open, onOpen, onNavigate, newGroup 
           </button>
         </div>
       ) : (
-        <ul className="p-4 space-y-3">
-          {ordered.map((t) => {
-            const covers = t.stops.slice(0, 3).map((s) => getPlace(s.placeId)).filter(Boolean)
-            return (
-              <li key={t.id}>
-                <button onClick={() => onOpen(t.id)}
-                        className="rise w-full text-left bg-surface border border-line rounded-2xl p-4 hover:border-brand/50 transition">
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold leading-tight truncate">
-                        {t.title}
-                        {t.kind === 'group' && (
-                          <span className="ml-2 rounded-full bg-brand/15 text-brand text-[9px] font-bold
-                                           uppercase tracking-[0.1em] px-1.5 py-0.5 align-middle">
-                            Group{(t.members?.length ?? 0) > 0 ? ` · ${t.members.length}` : ''}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-mist mt-0.5">{dateRange(t)}</p>
-                    </div>
-                    <span className="text-xs text-mist shrink-0">
-                      {t.stops.length} stop{t.stops.length === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                  {covers.length > 0 && (
-                    <p className="mt-3 text-xs text-mist truncate">
-                      {covers.map((p) => p.name).join(' · ')}
-                      {t.stops.length > covers.length ? ` +${t.stops.length - covers.length}` : ''}
-                    </p>
-                  )}
-                </button>
-                {t.kind === 'group' && t.stops.length > 0 && (
-                  <button onClick={() => onNavigate?.(t.stops[0].placeId, t.id)}
-                          className="mt-2 w-full flex items-center justify-center gap-2 rounded-full bg-brand text-ink py-2 text-xs font-semibold">
-                    <span className="size-2 rounded-full bg-ink animate-pulse" aria-hidden /> Go live with the group
-                  </button>
-                )}
-              </li>
-            )
-          })}
+        ordered.length > 0 && <ul className="p-4 space-y-3">
+          {ordered.map((t) => <TripCard key={t.id} t={t} group={isGroup(t)} onOpen={onOpen} onNavigate={onNavigate} />)}
         </ul>
       )}
+
+      {done.length > 0 && (
+        <section className="px-4 pb-6">
+          <h2 className="flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] text-mist mb-2">
+            <DoneIcon size={13} /> Completed · {done.length}
+          </h2>
+          <ul className="space-y-3">
+            {done.map((t) => <TripCard key={t.id} t={t} group={isGroup(t)} onOpen={onOpen} onNavigate={onNavigate} />)}
+          </ul>
+        </section>
+      )}
     </>
+  )
+}
+
+function TripCard({ t, group, onOpen, onNavigate }) {
+  const finished = isCompleted(t)
+  const covers = t.stops.slice(0, 3).map((s) => getPlace(s.placeId)).filter(Boolean)
+  return (
+    <li>
+      <button onClick={() => onOpen(t.id)}
+              className={`rise w-full text-left bg-surface border border-line rounded-2xl p-4 hover:border-brand/50 transition
+                          ${finished ? 'opacity-80' : ''}`}>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold leading-tight truncate">{t.title}</p>
+            {/* The badges sit under the title, with the dates. Beside a long
+                title the truncation ate them — "Private" showed as "…"
+                (iPhone, 2026-09-14). */}
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-mist">
+              {finished && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand text-ink text-[9px] font-bold
+                                 uppercase tracking-[0.1em] px-1.5 py-0.5">
+                  <DoneIcon size={10} /> Completed
+                </span>
+              )}
+              {group && (
+                <span className="rounded-full bg-brand/15 text-brand text-[9px] font-bold
+                                 uppercase tracking-[0.1em] px-1.5 py-0.5">
+                  Group{(t.members?.length ?? 0) > 0 ? ` · ${t.members.length}` : ''}
+                </span>
+              )}
+              {/* Whether anyone else can find it, at a glance from the list. */}
+              {group && (
+                <span className={`rounded-full text-[9px] font-bold uppercase tracking-[0.1em]
+                                  px-1.5 py-0.5 border
+                                  ${t.visibility === 'public'
+                                    ? 'border-brand/50 text-brand'
+                                    : 'border-line text-mist'}`}>
+                  {t.visibility === 'public' ? 'Public' : 'Private'}
+                </span>
+              )}
+              <span>{dateRange(t)}</span>
+            </p>
+          </div>
+          <span className="text-xs text-mist shrink-0">
+            {t.stops.length} stop{t.stops.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        {covers.length > 0 && (
+          <p className="mt-3 text-xs text-mist truncate">
+            {covers.map((p) => p.name).join(' · ')}
+            {t.stops.length > covers.length ? ` +${t.stops.length - covers.length}` : ''}
+          </p>
+        )}
+      </button>
+      {/* Start the whole trip: navigation through every stop, from the first.
+          Not on a ridden one — it is there to look back on. */}
+      {t.stops.length > 0 && !finished && (
+        <button onClick={() => onNavigate?.(t.stops[0].placeId, t.id)}
+                className="mt-2 w-full min-h-10 flex items-center justify-center gap-2 rounded-full bg-brand text-ink py-2 text-sm font-semibold">
+          {group
+            ? <><span className="size-2 rounded-full bg-ink animate-pulse" aria-hidden /> Go live with the group</>
+            : <><NavIcon size={14} filled /> Start trip</>}
+        </button>
+      )}
+    </li>
   )
 }

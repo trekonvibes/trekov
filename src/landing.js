@@ -1,3 +1,6 @@
+// Added to the Home Screen from this page: open the app, not the pitch.
+if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) location.replace('/app/')
+
 // Landing-page sign up: mails the same one-time link the app's account card
 // does, straight from trekov.com. Supabase creates the account on first use,
 // and the link lands the visitor in /app/ already signed in.

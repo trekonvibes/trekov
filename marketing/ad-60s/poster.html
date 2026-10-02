@@ -1,0 +1,53 @@
+<!-- Poster for sharing on WhatsApp: the first frame of the WhatsApp video (so
+     the chat thumbnail is branded, not a plain drone shot) and an image post on
+     its own. Background: the ad's opening frame (assets/text/poster-bg.jpg).
+     Render: ./render_endcard.sh poster.html assets/text/poster.png -->
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    font-family: "Outfit", ui-sans-serif, system-ui, sans-serif; color: #eef3f1;
+    background: #070a09 url("assets/text/poster-bg.jpg") center / cover no-repeat;
+    position: relative;
+  }
+  .shade { position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(7,10,9,.88) 0%, rgba(7,10,9,.55) 26%, rgba(7,10,9,0) 44%,
+                                        rgba(7,10,9,0) 52%, rgba(7,10,9,.8) 70%, #070a09 86%); }
+  .top { position: absolute; top: 150px; left: 0; right: 0; text-align: center; }
+  .kicker { font-weight: 700; font-size: 44px; letter-spacing: .24em; color: #3ddc97; }
+  .head { font-weight: 800; font-size: 108px; line-height: 1.02; letter-spacing: -0.03em; margin-top: 26px;
+          text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+  .sub { font-weight: 500; font-size: 40px; color: #c9d6d1; margin-top: 34px; }
+  .bottom { position: absolute; bottom: 130px; left: 0; right: 0;
+            display: flex; flex-direction: column; align-items: center; }
+  .lockup { display: flex; align-items: center; gap: 24px; }
+  .lockup svg { width: 112px; height: 112px; }
+  .word { font-weight: 600; font-size: 128px; letter-spacing: -0.035em; line-height: 1; margin-top: -12px; }
+  .offer { margin-top: 48px; font-weight: 700; font-size: 54px; color: #fff; background: rgba(0,192,139,.18);
+           border: 2px solid rgba(0,192,139,.55); border-radius: 22px; padding: 16px 40px; }
+  .url { margin-top: 44px; padding: 24px 58px; border: 3px solid #00c08b; border-radius: 999px;
+         font-weight: 600; font-size: 50px; letter-spacing: 0.22em; color: #00c08b; background: rgba(7,10,9,.6); }
+</style></head>
+<body>
+  <div class="shade"></div>
+  <div class="top">
+    <div class="kicker">GROUP RIDE?</div>
+    <div class="head">Ek route. Ek map.<br>Sab live.</div>
+    <div class="sub">STOP · WAIT · LET'S GO · Push-to-talk</div>
+  </div>
+  <div class="bottom">
+    <div class="lockup">
+      <svg viewBox="0 0 64 64" role="img" aria-label="Trekov">
+        <defs><linearGradient id="g" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#3DDC97"/><stop offset=".55" stop-color="#00C08B"/><stop offset="1" stop-color="#0E9F6E"/>
+        </linearGradient></defs>
+        <path fill="url(#g)" fill-rule="evenodd" d="M32 61C32 61 53 40.5 53 25A21 21 0 1 0 11 25C11 40.5 32 61 32 61ZM17 34.5L26.5 20L31.5 28L37.5 11.5L47 34.5Z"/>
+      </svg>
+      <span class="word">trekov</span>
+    </div>
+    <div class="offer">Free till 31 October</div>
+    <div class="url">TREKOV.COM</div>
+  </div>
+</body></html>

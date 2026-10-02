@@ -58,11 +58,30 @@ self.addEventListener('fetch', (e) => {
 
   if (url.origin !== self.location.origin) return
 
+  // Downloads go straight to the network, untouched. The APK is ~90 MB and the
+  // browser asks for it in ranges; teeing that through the Cache API turned a
+  // perfectly good file into net::ERR_INVALID_RESPONSE on the phone, so the app
+  // could not be installed from the site at all (2026-09-21). A range request
+  // for anything else is passed through for the same reason — a 206 cannot be
+  // cached, and media seeks arrive that way.
+  if (url.pathname.startsWith('/download/') || request.headers.has('range')) return
+
+  // Pages (index.html) are always checked with the server: GitHub Pages lets
+  // the browser keep them for 10 minutes, so a plain fetch could hand back the
+  // previous release — its bundle and its bugs — right after a deploy (seen
+  // 2026-09-12: a phone kept running the old trip-delete code after a fix went
+  // out). Bundles have a hash in their names, so the normal cache is safe there.
+  const page = request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html')
   e.respondWith(
-    fetch(request)
+    fetch(request, page ? { cache: 'no-cache' } : undefined)
       .then((res) => {
-        const copy = res.clone()
-        caches.open(SHELL).then((c) => c.put(request, copy)).catch(() => {})
+        // Only whole, ordinary responses are worth keeping, and only small
+        // ones: the cache is for the app shell, not for files a rider saves.
+        const size = Number(res.headers.get('content-length') ?? 0)
+        if (res.status === 200 && res.type === 'basic' && size < 8_000_000) {
+          const copy = res.clone()
+          caches.open(SHELL).then((c) => c.put(request, copy)).catch(() => {})
+        }
         return res
       })
       .catch(async () =>

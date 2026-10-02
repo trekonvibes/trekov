@@ -38,5 +38,12 @@ await rm(join(OUT, 'app'), { recursive: true, force: true })
 // the app. Someone running the app has already answered that.
 await rm(join(OUT, 'i'), { recursive: true, force: true })
 
+// The website offers the Android app as a download; the app itself must not
+// carry a copy of itself.
+await rm(join(OUT, 'download'), { recursive: true, force: true })
+// Nor the live-update packages (scripts/build-update.mjs), or each bundle
+// would carry the previous one.
+await rm(join(OUT, 'updates'), { recursive: true, force: true })
+
 const files = await readdir(OUT)
 console.log(`✅ ${OUT}/ ready — ${files.length} entries at the root:`, files.join(', '))

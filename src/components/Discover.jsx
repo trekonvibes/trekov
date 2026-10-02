@@ -7,6 +7,7 @@ import { ago, timeAgo } from '../lib/format'
 import { CalendarIcon, Logo, NavIcon, SaveIcon, StarIcon } from './Icons'
 import Media from './Media'
 import Nearby from './Nearby'
+import { getFix } from '../lib/gps'
 
 const MONTH = new Date().toLocaleString(undefined, { month: 'long' })
 
@@ -20,14 +21,13 @@ export default function Discover({ onOpenPlace, onNavigate, onListBusiness }) {
   // Prefer the traveller's own position; fall back to the month's attraction
   // so the section is useful before location permission is granted.
   const [gps, setGps] = useState(null)
+  // Through lib/gps, so the app asks the phone rather than the web view — a
+  // direct navigator.geolocation call here was one more "trekov.com would like
+  // to use your location" on iPhone.
   useEffect(() => {
-    if (!navigator.geolocation) return
-    const id = navigator.geolocation.getCurrentPosition(
-      (p) => setGps({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {},
-      { maximumAge: 300000, timeout: 8000 },
-    )
-    return () => id && navigator.geolocation.clearWatch?.(id)
+    let live = true
+    getFix({ timeout: 8000 }).then((f) => live && setGps({ lat: f.lat, lng: f.lng })).catch(() => {})
+    return () => { live = false }
   }, [])
   const attraction = useStore(selectAttractionOfMonth)
   const mostVisited = useStore(selectMostVisited)
@@ -65,7 +65,7 @@ export default function Discover({ onOpenPlace, onNavigate, onListBusiness }) {
                 </span>
               </div>
               <div className="p-4">
-                <p className="font-semibold leading-tight">{attraction.name}</p>
+                <p className="font-semibold leading-tight break-words">{attraction.name}</p>
                 <p className="text-xs text-mist">{attraction.region} · {attraction.country}</p>
                 {attraction.blurb && (
                   <p className="text-sm text-white/85 leading-snug mt-2">{attraction.blurb}</p>

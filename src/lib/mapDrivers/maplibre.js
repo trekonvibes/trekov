@@ -18,7 +18,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 // the production build shipped no worker at all and the offline map could
 // never start. `?worker&url` bundles it and hands back where it landed.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { STYLE_URL } from '../offline'
+import { STYLE_URL } from '../tileSource'
 
 maplibre.setWorkerUrl(workerUrl)
 
@@ -45,12 +45,14 @@ const lineFeature = (lls) => ({
   geometry: { type: 'LineString', coordinates: lls.map(([lat, lng]) => [lng, lat]) },
 })
 
-export function createMaplibreMap(el, { center, zoom, zoomControl = false }) {
+export function createMaplibreMap(el, { center, zoom, zoomControl = false, minZoom = 3 }) {
   const map = new maplibre.Map({
     container: el,
     style: STYLE_URL,
     center: [center[1], center[0]],
     zoom,
+    // Further out the world just repeats, tiny, across the screen.
+    minZoom,
     // OpenStreetMap's licence needs the credit visible. Compact folds it
     // behind an (i) on a phone instead of dropping it.
     attributionControl: { compact: true },
@@ -134,6 +136,7 @@ export function createMaplibreMap(el, { center, zoom, zoomControl = false }) {
         .addTo(map)
       return {
         setLatLng: (p) => m.setLngLat([p[1], p[0]]),
+        el: box,
         setHtml: (h) => { box.innerHTML = h },
         remove: () => m.remove(),
       }
@@ -174,6 +177,7 @@ export function createMaplibreMap(el, { center, zoom, zoomControl = false }) {
     // A vector map can tilt and turn, so the 2D/3D control works offline too.
     supports3D: () => true,
     isVector: () => true,
+    onRenderingType: () => () => {},      // always vector: nothing to wait for
     setTilt: (deg) => map.setPitch(deg),
     setHeading: (deg) => map.setBearing(deg),
     getTilt: () => map.getPitch(),

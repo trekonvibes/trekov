@@ -9,7 +9,7 @@ export default function SharedTrip({ trip, onAccept, onDismiss }) {
   return (
     <Portal>
       <div className="fixed inset-0 z-[1300] bg-black flex justify-center" role="dialog" aria-label="Shared trip">
-        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line">
+        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line pt-safe px-safe">
         <header className="flex items-center gap-2 px-4 h-14 border-b border-line shrink-0">
           <Logo size={20} />
           <span className="font-semibold">Shared with you</span>

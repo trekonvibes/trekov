@@ -10,7 +10,7 @@ const TABS = [
   { id: 'profile',  label: 'You',      Icon: UserIcon },
 ]
 
-export default function TabBar({ tab, onChange, savedCount, unread }) {
+export default function TabBar({ tab, onChange, savedCount, unread, requests = 0 }) {
   return (
     <nav className="shrink-0 flex items-stretch border-t border-line bg-ink/90 backdrop-blur-xl
                     pb-[env(safe-area-inset-bottom)]">
@@ -35,7 +35,15 @@ export default function TabBar({ tab, onChange, savedCount, unread }) {
               {id === 'discover' && unread > 0 && (
                 <span className="absolute -top-1 -right-2 size-2.5 rounded-full bg-rose" />
               )}
-              {id === 'trips' && savedCount > 0 && (
+              {/* Someone waiting to be let onto a trip is a job for you, so it
+                  takes the badge over the saved-places count while it lasts —
+                  and wears the same amber as the request itself. */}
+              {id === 'trips' && requests > 0 && (
+                <span aria-label={`${requests} waiting to join`}
+                      className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-sun text-ink
+                                 text-[9px] font-bold grid place-items-center tabular-nums">{requests}</span>
+              )}
+              {id === 'trips' && requests === 0 && savedCount > 0 && (
                 <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-brand text-ink
                                  text-[9px] font-bold grid place-items-center tabular-nums">{savedCount}</span>
               )}

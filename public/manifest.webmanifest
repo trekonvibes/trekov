@@ -1,16 +1,38 @@
 {
-  "name": "Trekov — the map is the feed",
+  "name": "Trekov — ride together, live",
   "short_name": "Trekov",
-  "description": "Zoom into anywhere, see what people shot there, save the place and plan the trip.",
+  "description": "Group rides on one live map: one route for everyone, one-tap STOP, WAIT and LET'S GO alerts, push-to-talk and turn-by-turn navigation.",
   "start_url": "/app/",
   "scope": "/app/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#0B0F0E",
   "theme_color": "#0B0F0E",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/app/"
 }

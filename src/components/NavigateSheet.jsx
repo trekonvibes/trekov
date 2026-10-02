@@ -1,14 +1,13 @@
-import { currentVehicle, googleMapsUrl, mapplsUrl } from '../lib/handoff'
+import { currentVehicle, googleMapsUrl } from '../lib/handoff'
 import { CloseIcon, ExternalIcon, MountainIcon, NavIcon } from './Icons'
 import Portal from './Portal'
 
 /**
- * Where a Navigate tap goes now that Trekov does not drive itself.
+ * Where a Navigate tap goes now that Trekov does not drive itself: Google Maps,
+ * with the trip's other stops carried along as waypoints.
  *
- * Mappls leads because it is the better map for Indian roads. Google Maps is
- * underneath it rather than hidden, because the Mappls deep link only starts
- * navigation when their app is installed — a rider without it would otherwise
- * tap Navigate and arrive nowhere.
+ * Mappls used to lead here. It was taken out of the app (Punit, 2026-09-13) —
+ * one clear way to navigate rather than a choice between two.
  */
 export default function NavigateSheet({ place, stops = [], onClose }) {
   const mode = currentVehicle()
@@ -38,25 +37,18 @@ export default function NavigateSheet({ place, stops = [], onClose }) {
             </button>
           </div>
 
-          <button onClick={() => open(mapplsUrl(place, mode))}
+          <button onClick={() => open(googleMapsUrl(place, rest, mode))}
                   className="w-full flex items-center justify-center gap-2 rounded-full bg-brand text-ink
                              py-3.5 text-sm font-semibold active:scale-[.99] transition">
-            <NavIcon size={18} filled /> Navigate with Mappls
+            <NavIcon size={18} filled /> Navigate with Google Maps
           </button>
-          <p className="text-[11px] text-mist mt-1.5 text-center leading-snug">
-            Opens the Mappls app. Install it first if you have not.
+          <p className="flex items-center justify-center gap-1 text-[11px] text-mist mt-1.5 text-center leading-snug">
+            <ExternalIcon size={11} /> Opens Google Maps with the route ready.
           </p>
-
-          <button onClick={() => open(googleMapsUrl(place, rest, mode))}
-                  className="w-full flex items-center justify-center gap-2 rounded-full border border-line
-                             py-3 text-sm font-semibold mt-3 hover:border-brand hover:text-brand">
-            <ExternalIcon size={16} /> Google Maps
-          </button>
           {rest.length > 0 && (
             <p className="flex items-start gap-1.5 text-[11px] text-mist mt-1.5 leading-snug">
               <MountainIcon size={12} className="shrink-0 mt-px" />
-              Carries the other {rest.length} stop{rest.length === 1 ? '' : 's'} as waypoints —
-              Mappls takes one destination at a time.
+              Carries the other {rest.length} stop{rest.length === 1 ? '' : 's'} as waypoints, in trip order.
             </p>
           )}
         </div>

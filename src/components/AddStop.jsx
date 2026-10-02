@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { addStop, selectPlaceSearch, useStore } from '../lib/store'
-import { searchAnywhere } from '../lib/geocode'
+import { resolveHit, searchAnywhere } from '../lib/geocode'
 import { adoptHit } from '../lib/adopt'
 import { SearchIcon } from './Icons'
 
@@ -71,7 +71,7 @@ export default function AddStop({ trip, onAdded }) {
 
         {elsewhere.map((h) => (
           <li key={h.id}>
-            <button onClick={() => add(adoptHit(h), h.name)}
+            <button onClick={() => resolveHit(h).then((r) => add(adoptHit(r), r.name), () => {})}
                     className="w-full text-left py-2.5 px-1 hover:bg-raised rounded-lg">
               <span className="block text-sm truncate">{h.name}</span>
               <span className="block text-[11px] text-mist truncate">{h.detail}</span>

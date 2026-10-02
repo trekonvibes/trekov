@@ -1,0 +1,5 @@
+// Release builds. The Navigation SDK key lives in nav-key.xcconfig, which is
+// not committed: TREKOV_NAV_KEY = <iOS-restricted key>. Without it the app
+// uses Trekov's web navigation.
+TREKOV_ALLOW_SIMULATE = NO
+#include? "nav-key.xcconfig"

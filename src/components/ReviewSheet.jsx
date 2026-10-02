@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import useBackClose from '../lib/useBackClose'
+import ReportSheet from './ReportSheet'
 import {
   FACT_FIELDS, RATING_CATEGORIES, getUser, selectMyReviewAt, selectReviewsAt, upsertReview, useStore,
 } from '../lib/store'
@@ -10,6 +12,9 @@ const SCORES = [1, 2, 3, 4, 5]
 
 export default function ReviewSheet({ place, onClose }) {
   const mine = useStore((s) => selectMyReviewAt(s, place.id))
+  const [reporting, setReporting] = useState(null)
+  const account = useStore((s) => s.account)
+  useBackClose(onClose, !reporting)
   const reviews = useStore((s) => selectReviewsAt(s, place.id))
   const [ratings, setRatings] = useState(() => mine?.ratings ?? {})
   const [note, setNote] = useState(mine?.note ?? '')
@@ -29,7 +34,7 @@ export default function ReviewSheet({ place, onClose }) {
     <Portal>
       <div className="fixed inset-0 z-[1250] flex items-end justify-center" role="dialog" aria-label={`Rate ${place.name}`}>
         <button className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
-        <div className="sheet-up relative tk-shell max-h-[85vh] flex flex-col rounded-t-3xl border-t border-line bg-ink">
+        <div className="sheet-up relative tk-shell max-h-[85vh] supports-[height:1dvh]:max-h-[85dvh] px-safe flex flex-col rounded-t-3xl border-t border-line bg-ink">
           <header className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
             <div className="min-w-0">
               <h2 className="font-semibold truncate">Rate {place.name}</h2>
@@ -109,6 +114,10 @@ export default function ReviewSheet({ place, onClose }) {
                           <p className="text-sm">
                             <span className="font-semibold">@{u.handle}</span>{' '}
                             <span className="text-xs text-mist">{ago(r.createdAt)} · {avg}/5</span>
+                            {account && r.userId !== account.id && r.userId !== 'u_me' && (
+                              <button onClick={() => setReporting({ kind: 'review', targetId: r.id, userId: r.userId, handle: u.handle })}
+                                      className="ml-2 text-[11px] text-mist hover:text-rose">Report</button>
+                            )}
                           </p>
                           {r.note && <p className="text-sm text-white/85 break-words">{r.note}</p>}
                         </div>
@@ -128,6 +137,7 @@ export default function ReviewSheet({ place, onClose }) {
           </div>
         </div>
       </div>
+      {reporting && <ReportSheet {...reporting} onClose={() => setReporting(null)} />}
     </Portal>
   )
 }

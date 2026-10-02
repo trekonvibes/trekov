@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+// Release signing. The upload key lives outside the repo (~/.android-keys) and
+// its passwords in android/keystore.properties, which is git-ignored and filled
+// in by the key's owner. Without them bundleRelease still builds, unsigned —
+// fine for checking the build, rejected by Play.
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+def canSign = keystoreProps.getProperty('storePassword') && keystoreProps.getProperty('storeFile') &&
+        new File(keystoreProps.getProperty('storeFile')).exists()
+
 android {
     namespace = "com.trekov.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,19 +17,60 @@ android {
         applicationId "com.trekov.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 26
+        versionName "2.13"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Google's Navigation SDK key (restricted to this app's package and
+        // signing certificate). Kept in local.properties as trekovNavKey; without
+        // it the app builds and riders get the web navigation instead.
+        def localProps = new Properties()
+        def localFile = rootProject.file('local.properties')
+        if (localFile.exists()) localFile.withInputStream { localProps.load(it) }
+        manifestPlaceholders = [TREKOV_NAV_KEY: localProps.getProperty('trekovNavKey', '')]
+        // Desk testing: drive the route without moving. Only in a build made
+        // with -PtrekovSimulate (scripts/android-release.sh when SIMULATE=1).
+        buildConfigField "boolean", "ALLOW_SIMULATE", (project.hasProperty('trekovSimulate') ? 'true' : 'false')
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (canSign) {
+            release {
+                storeFile new File(keystoreProps.getProperty('storeFile'))
+                storePassword keystoreProps.getProperty('storePassword')
+                keyAlias keystoreProps.getProperty('keyAlias')
+                keyPassword keystoreProps.getProperty('keyPassword') ?: keystoreProps.getProperty('storePassword')
+            }
+        }
+    }
+    compileOptions {
+        // The Navigation SDK uses java.time and friends below Android 8.
+        coreLibraryDesugaringEnabled true
+    }
+    buildFeatures {
+        buildConfig true
+    }
     buildTypes {
         release {
+            if (canSign) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    packaging {
+        jniLibs {
+            // AndroidX DataStore ships this prebuilt library built with NDK r20,
+            // and Play flags it: "your app could crash on 16 KB devices"
+            // (release 2.10). Every new Android phone uses 16 KB memory pages.
+            // DataStore only loads it for a data store shared between processes,
+            // and nothing here asks for one — Firebase and the Navigation SDK
+            // both use the single-process kind — so it is dead weight with a
+            // crash attached. Drop it when DataStore ships one built with NDK
+            // r28 or newer; 1.2.1 and 1.3.0-alpha11 still do not (2026-09-16).
+            excludes += ['**/libdatastore_shared_counter.so']
         }
     }
 }
@@ -36,6 +87,17 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // Google Maps turn-by-turn navigation, natively in the app (Punit, 2026-09-14).
+    implementation "com.google.android.libraries.navigation:navigation:7.9.0"
+    // Cronet, in the app rather than borrowed from Google Play services. The
+    // Navigation SDK asks for a route over Cronet and ships only the fallback
+    // engine, which cannot make that call: when the phone's Play services stops
+    // handing out the real one, every route dies as "NETWORK_ERROR" before it
+    // leaves the device — Google's own quota page counted zero Set Destination
+    // requests all day (Punit's F966B, 2026-09-16; a restart did not fix it).
+    // Same version as the SDK's other Cronet pieces; keep them in step.
+    implementation "org.chromium.net:cronet-embedded:143.7445.0"
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs_nio:2.1.5"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
@@ -51,4 +113,10 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// The Navigation SDK carries its own copy of the Maps SDK; a second one from
+// any other library would clash with it.
+configurations.all {
+    exclude group: 'com.google.android.gms', module: 'play-services-maps'
 }

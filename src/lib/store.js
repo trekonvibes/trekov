@@ -41,7 +41,38 @@ function initial() {
     // Who is signed in, and how the last sync went. Null account = local only.
     account: null,
     sync: { status: 'idle', at: null, error: null },
+    // Trips deleted on this phone that the server may still have (see deleteTrip).
+    deletedTrips: [],
+    // Other removals the server may not have yet — kept so a pull can't bring
+    // them back (sync.js pushDeletions): places taken off To Visit, deleted
+    // photos and reviews, likes taken back.
+    unsavedPlaces: [], deletedPosts: [], deletedReviews: [], unliked: [],
+    // People this account has blocked: their photos, comments and reviews are
+    // not shown, and they cannot add you to a trip (lib/safety.js).
+    blocked: [],
+    // Blocks and unblocks the server hasn't confirmed yet: [{ id, on }].
+    pendingBlocks: [],
+    // The rider's emergency details, shown on the phone's lock screen while a
+    // ride is on (lib/riderId.js). Health data: it syncs to the rider's own
+    // account and nowhere else (supabase/rider-safety.sql).
+    safety: { bloodGroup: '', emergencyName: '', emergencyPhone: '', insured: false, updatedAt: 0 },
   }
+}
+
+/* ------------------------------------------------------- emergency details */
+
+export const selectSafety = memo((s) => s.safety ?? { bloodGroup: '', emergencyName: '', emergencyPhone: '', insured: false, updatedAt: 0 })
+
+/** Saved here first; sync.js sends it to the rider's own row when signed in. */
+export function setRiderSafety(patch) {
+  set({ ...state, safety: { ...selectSafety(state), ...patch, updatedAt: Date.now() } })
+}
+
+/** The server's copy, when it is newer than this phone's. */
+export function applyRemoteSafety(row) {
+  const at = row?.updatedAt ?? 0
+  if (at <= (state.safety?.updatedAt ?? 0)) return
+  set({ ...state, safety: { ...selectSafety(state), ...row } })
 }
 
 /** Raw state, for the sync layer. Components use useStore instead. */
@@ -76,20 +107,69 @@ export function applyRemote(remote, userId) {
   const remoteReviewIds = new Set(remote.reviews.map((r) => r.id))
   const unsyncedReviews = mineLocally(state.reviews, 'userId').filter((r) => !remoteReviewIds.has(r.id))
 
+  // A trip deleted here stays deleted, even if this snapshot still has it.
+  const deleted = new Set(state.deletedTrips ?? [])
+  const remoteTrips = remote.trips.filter((t) => !deleted.has(t.id))
+  // Same for everything else removed here that the server may not have caught up with.
+  const gonePosts = new Set(state.deletedPosts ?? [])
+  const goneReviews = new Set(state.deletedReviews ?? [])
+  const unsaved = new Set(state.unsavedPlaces ?? [])
+  const unliked = new Set(state.unliked ?? [])
+  // What the server has, with this phone's changes it hasn't taken yet on top.
+  const blocked = new Set(remote.blocked ?? state.blocked ?? [])
+  for (const p of state.pendingBlocks ?? []) { if (p.on) blocked.add(p.id); else blocked.delete(p.id) }
+  const remotePosts = remote.posts
+    .filter((p) => !gonePosts.has(p.id) && !blocked.has(p.authorId))
+    .map((p) => (blocked.size ? { ...p, comments: p.comments.filter((c) => !blocked.has(c.userId)) } : p))
+    .map((p) => (unliked.has(p.id) && p.likedByMe ? { ...p, likedByMe: false, likes: Math.max(0, p.likes - 1) } : p))
+  const remoteReviews = remote.reviews.filter((r) => !goneReviews.has(r.id) && !blocked.has(r.userId))
+
   set({
     ...state,
     users: { ...state.users, ...remote.users },
     // The server keeps only a catalogue place's name and position; the
     // build's copy (photo, credits, kind) stays.
     places: { ...state.places, ...remote.places, ...CATALOGUE_BY_ID },
-    posts: [...unsynced, ...remote.posts],
-    reviews: [...unsyncedReviews, ...remote.reviews],
-    // Saves the server couldn't take yet stay, rather than vanishing on pull.
+    posts: [...unsynced, ...remotePosts],
+    blocked: [...blocked],
+    reviews: [...unsyncedReviews, ...remoteReviews],
+    // Saves the server couldn't take yet stay, rather than vanishing on pull;
+    // a place taken off To Visit here stays off.
     savedPlaces: [...new Set([
       ...remote.savedPlaces,
       ...state.savedPlaces.filter((id) => remote.heldSaves?.includes(id)),
-    ])],
-    trips: remote.trips,
+    ])].filter((id) => !unsaved.has(id)),
+    // The server holds the itinerary; the phone holds what the server doesn't —
+    // whether it's a group trip and who was added. Replacing the list outright
+    // turned every group trip back into a solo one with nobody on it. A trip
+    // someone else owns is always a group trip. Our own trips that haven't
+    // reached the server yet are kept.
+    trips: [
+      ...remoteTrips.map(({ groupHint, ...rt }) => {
+        const local = state.trips.find((t) => t.id === rt.id)
+        const shared = Boolean(rt.ownerId && userId && rt.ownerId !== userId)
+        return {
+          ...rt, kind: shared || groupHint ? 'group' : local?.kind ?? 'solo', members: local?.members ?? [],
+          // Who may see you is decided on this phone and never sent anywhere,
+          // so the server's copy of a trip knows nothing about it. Rebuilding
+          // the trip from that copy dropped both fields, and a missing
+          // `sharing` reads as on: turn sharing off and the next sync — every
+          // few seconds with the rider panel open — switched it back on and
+          // started broadcasting again (reported 2026-09-13).
+          ...(local && 'sharing' in local ? { sharing: local.sharing } : {}),
+          ...(local?.hiddenFrom ? { hiddenFrom: local.hiddenFrom } : {}),
+          // A server without the completed_at column (trip-completed.sql not
+          // run yet) says nothing about it; the phone's answer stands.
+          ...(!('completedAt' in rt) && local?.completedAt ? { completedAt: local.completedAt } : {}),
+          // A captain's change not yet sent stands over the server's copy.
+          ...(local?.captainEdit ? {
+            title: local.title, start: local.start, end: local.end, notes: local.notes, stops: local.stops, bookings: local.bookings,
+            captainEdit: local.captainEdit,
+          } : {}),
+        }
+      }),
+      ...state.trips.filter((t) => !remote.trips.some((rt) => rt.id === t.id) && (!t.ownerId || t.ownerId === userId)),
+    ],
   })
 }
 
@@ -415,8 +495,16 @@ export function upsertReview(placeId, { ratings, note, facts }) {
   return review.id
 }
 
+// Pending-removal lists (see initial()): add an id, or drop it when undone.
+const addId = (list, id) => [...new Set([...(list ?? []), id])]
+const dropId = (list, id) => (list ?? []).filter((x) => x !== id)
+
 export function removeReview(reviewId) {
-  set({ ...state, reviews: state.reviews.filter((r) => r.id !== reviewId) })
+  set({
+    ...state,
+    reviews: state.reviews.filter((r) => r.id !== reviewId),
+    deletedReviews: addId(state.deletedReviews, reviewId),
+  })
 }
 
 export const selectTrips = memo((s) => s.trips)
@@ -438,12 +526,15 @@ export const selectPlaceSearch = memo((s, q) => {
 /* --------------------------------- writes --------------------------------- */
 
 export function toggleLike(postId) {
+  const liked = Boolean(state.posts.find((p) => p.id === postId)?.likedByMe)
   set({
     ...state,
     posts: state.posts.map((p) =>
       p.id === postId
         ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) }
         : p),
+    // Taking a like back has to reach the server too, or the next pull restores it.
+    unliked: liked ? addId(state.unliked, postId) : dropId(state.unliked, postId),
   })
 }
 
@@ -465,6 +556,9 @@ export function toggleSavePlace(placeId) {
     savedPlaces: saved
       ? state.savedPlaces.filter((id) => id !== placeId)
       : [placeId, ...state.savedPlaces],
+    // Taking a place off To Visit is sent to the server (sync.js pushDeletions);
+    // before, the next pull put it straight back (Punit, 2026-09-12).
+    unsavedPlaces: saved ? addId(state.unsavedPlaces, placeId) : dropId(state.unsavedPlaces, placeId),
   })
   return !saved
 }
@@ -519,17 +613,17 @@ export function adoptPlace(place) {
 
 export function addBooking(tripId, booking) {
   const entry = { id: newId('b'), ...booking }
-  patchTrip(tripId, (t) => ({ ...t, bookings: [...(t.bookings ?? []), entry] }))
+  editPlan(tripId, (t) => ({ ...t, bookings: [...(t.bookings ?? []), entry] }))
   return entry.id
 }
 
 export const updateBooking = (tripId, bookingId, patch) =>
-  patchTrip(tripId, (t) => ({
+  editPlan(tripId, (t) => ({
     ...t, bookings: (t.bookings ?? []).map((b) => (b.id === bookingId ? { ...b, ...patch } : b)),
   }))
 
 export const removeBooking = (tripId, bookingId) =>
-  patchTrip(tripId, (t) => ({ ...t, bookings: (t.bookings ?? []).filter((b) => b.id !== bookingId) }))
+  editPlan(tripId, (t) => ({ ...t, bookings: (t.bookings ?? []).filter((b) => b.id !== bookingId) }))
 
 /**
  * Post a photo to a place. The newest photo takes the place's banner; earlier
@@ -555,7 +649,7 @@ export async function createPost({ file, placeId, caption, tags, located = null 
 export async function deletePost(id) {
   const post = getPost(id)
   if (post?.media.blobKey) await delBlob(post.media.blobKey).catch(() => {})
-  set({ ...state, posts: state.posts.filter((p) => p.id !== id) })
+  set({ ...state, posts: state.posts.filter((p) => p.id !== id), deletedPosts: addId(state.deletedPosts, id) })
 }
 
 /* ---------------------------------- trips --------------------------------- */
@@ -566,7 +660,10 @@ export function createTrip({ title, kind = 'solo', start = '', end = '', stops =
     // 'solo' or 'group' — a group trip carries companions and shares live
     // position while everyone is navigating it.
     kind,
-    members: [], start, end, notes, stops, bookings: [],
+    // The host is whoever made it; captainId is the rider they ask to lead.
+    members: [], captainId: null, start, end, notes, stops, bookings: [],
+    // Private unless the host opens it: see setVisibility.
+    visibility: 'private',
   }
   set({ ...state, trips: [trip, ...state.trips] })
   return trip.id
@@ -574,7 +671,49 @@ export function createTrip({ title, kind = 'solo', start = '', end = '', stops =
 
 const patchTrip = (id, fn) => set({ ...state, trips: state.trips.map((t) => (t.id === id ? fn(t) : t)) })
 
-export const updateTrip = (id, patch) => patchTrip(id, (t) => ({ ...t, ...patch }))
+/**
+ * Who may change a trip's name, dates, notes, itinerary and bookings (Punit,
+ * 2026-09-21): the host, and the captain they named. Everyone else on a group
+ * or public trip sees it as it is. A trip that has never reached the server
+ * has no owner yet and is the maker's own.
+ */
+export function canEditTrip(trip, userId) {
+  if (!trip) return false
+  if (!trip.ownerId || !userId) return true
+  return trip.ownerId === userId || (Boolean(trip.captainId) && trip.captainId === userId)
+}
+
+// The fields the captain may change — bookings too (Punit, 2026-09-21). The server keeps the host's copy, so a
+// captain's edit is marked until sync.js has sent it (edit_trip_as_captain).
+const PLAN_FIELDS = ['title', 'start', 'end', 'notes', 'stops', 'bookings']
+const editPlan = (id, fn) => patchTrip(id, (t) => {
+  const next = fn(t)
+  if (next === t) return t
+  const me = state.account?.id
+  const captainOnly = t.ownerId && me && t.ownerId !== me && t.captainId === me
+  return captainOnly ? { ...next, captainEdit: Date.now() } : next
+})
+
+export const updateTrip = (id, patch) => {
+  if (Object.keys(patch).some((k) => PLAN_FIELDS.includes(k))) editPlan(id, (t) => ({ ...t, ...patch }))
+  else patchTrip(id, (t) => ({ ...t, ...patch }))
+}
+
+/** A captain's edit has reached the server. */
+export const captainEditSent = (id, at) =>
+  patchTrip(id, (t) => (t.captainEdit && t.captainEdit <= at ? (({ captainEdit, ...rest }) => rest)(t) : t))
+
+/**
+ * A trip that has been ridden (Punit, 2026-09-21). It stays in the list, under
+ * Completed, with its route, notes and reel — it just stops offering "Go live".
+ * Finishing a public ride also takes it off Open Rides: nobody should be asking
+ * to join a ride that is over. Reopening leaves it private; the host can open
+ * it up again if it is on for another run.
+ */
+export const completeTrip = (id) =>
+  patchTrip(id, (t) => ({ ...t, completedAt: new Date().toISOString(), visibility: 'private' }))
+export const reopenTrip = (id) => patchTrip(id, (t) => ({ ...t, completedAt: null }))
+export const isCompleted = (trip) => Boolean(trip?.completedAt)
 
 /** Companions on a group trip. Stored on the trip; mirrored to Supabase when signed in. */
 export function addMember(tripId, person) {
@@ -589,6 +728,35 @@ export const removeMember = (tripId, personId) =>
   patchTrip(tripId, (t) => ({ ...t, members: (t.members ?? []).filter((m) => m.id !== personId) }))
 
 export const selectMembers = memo((s, tripId) => s.trips.find((t) => t.id === tripId)?.members ?? [])
+
+/**
+ * Who leads the ride.
+ *
+ * The host — the trip's owner — names the captain: themselves, or any rider who
+ * has accepted. It is kept on the trip so every phone shows the same one
+ * (supabase/trip-roles.sql), and the server refuses anyone else's choice.
+ */
+export const setCaptain = (tripId, personId) =>
+  patchTrip(tripId, (t) => ({ ...t, captainId: personId || null }))
+
+/** The captain of a trip: whoever the host named, or the host until they name one. */
+export const captainOf = (trip) => trip?.captainId ?? trip?.ownerId ?? null
+
+/**
+ * Who can find the ride.
+ *
+ * 'private' is the default and the old behaviour: only the host and the riders
+ * they invited know it exists. 'public' lists it under Open rides — title,
+ * dates, where it starts and ends, how many are going — so other riders can ask
+ * to come along. It opens nothing else: the notes, the bookings, the live
+ * positions and the voice channel stay with the people on the trip, and the
+ * host still approves every rider (supabase/trip-visibility.sql).
+ */
+export const setVisibility = (tripId, visibility) =>
+  patchTrip(tripId, (t) => ({ ...t, visibility: visibility === 'public' ? 'public' : 'private' }))
+
+/** A trip is private unless its host has opened it. */
+export const isPublic = (trip) => trip?.visibility === 'public'
 
 /* ------------------------------------------------------ location sharing --
  * Who on a trip may see where you are.
@@ -625,24 +793,43 @@ export const isSharing = (tripId) => {
   const t = state.trips.find((x) => x.id === tripId)
   return t?.sharing !== false
 }
-export const deleteTrip = (id) => set({ ...state, trips: state.trips.filter((t) => t.id !== id) })
+/**
+ * Deletes a trip here and remembers that it did, until the server has caught
+ * up (sync.js pushDeletions). Dropping it from the list alone meant the next
+ * sync pulled it straight back from the server (Punit, 2026-09-11).
+ */
+export const deleteTrip = (id) => set({
+  ...state,
+  trips: state.trips.filter((t) => t.id !== id),
+  deletedTrips: [...new Set([...(state.deletedTrips ?? []), id])],
+})
+
+/**
+ * The server has caught up with these removals, so there is nothing left to
+ * remember. `kind`: deletedTrips, unsavedPlaces, deletedPosts, deletedReviews or unliked.
+ */
+export function forgetDeleted(kind, ids) {
+  if (!ids.length) return
+  set({ ...state, [kind]: (state[kind] ?? []).filter((id) => !ids.includes(id)) })
+}
+export const forgetDeletedTrips = (ids) => forgetDeleted('deletedTrips', ids)
 
 export function addStop(tripId, placeId) {
-  patchTrip(tripId, (t) =>
+  editPlan(tripId, (t) =>
     t.stops.some((s) => s.placeId === placeId) ? t : { ...t, stops: [...t.stops, { placeId, note: '' }] })
 }
 
 export const removeStop = (tripId, placeId) =>
-  patchTrip(tripId, (t) => ({ ...t, stops: t.stops.filter((s) => s.placeId !== placeId) }))
+  editPlan(tripId, (t) => ({ ...t, stops: t.stops.filter((s) => s.placeId !== placeId) }))
 
 export const setStopNote = (tripId, placeId, note) =>
-  patchTrip(tripId, (t) => ({
+  editPlan(tripId, (t) => ({
     ...t, stops: t.stops.map((s) => (s.placeId === placeId ? { ...s, note } : s)),
   }))
 
 /** Move a stop up or down the itinerary. */
 export function moveStop(tripId, index, delta) {
-  patchTrip(tripId, (t) => {
+  editPlan(tripId, (t) => {
     const to = index + delta
     if (to < 0 || to >= t.stops.length) return t
     const stops = [...t.stops]
@@ -659,12 +846,35 @@ export function importTrip(trip) {
     id: newId('t'),
     title: trip.title, start: trip.start ?? '', end: trip.end ?? '', notes: trip.notes ?? '',
     stops: (trip.stops ?? []).filter((s) => places[s.placeId]),
-    kind: trip.kind ?? 'solo',
+    // A copy from a link is your own plan, not a seat on someone's group ride —
+    // links carry the original's kind (for the invite page to show), but the
+    // copy stays solo, as it always has.
+    kind: 'solo',
     members: [],
     bookings: [],
   }
   set({ ...state, places, trips: [copy, ...state.trips] })
   return copy.id
+}
+
+/** The server has a block (or unblock) now; stop retrying it. */
+export function forgetPendingBlock(userId, on) {
+  set({ ...state, pendingBlocks: (state.pendingBlocks ?? []).filter((p) => !(p.id === userId && p.on === on)) })
+}
+
+/** Hide everything from someone at once; lib/safety.js tells the server. */
+export function setBlocked(userId, on) {
+  const blocked = new Set(state.blocked ?? [])
+  if (on) blocked.add(userId); else blocked.delete(userId)
+  set({
+    ...state,
+    blocked: [...blocked],
+    pendingBlocks: [...(state.pendingBlocks ?? []).filter((p) => p.id !== userId), { id: userId, on }],
+    posts: on
+      ? state.posts.filter((p) => p.authorId !== userId).map((p) => ({ ...p, comments: p.comments.filter((c) => c.userId !== userId) }))
+      : state.posts,
+    reviews: on ? state.reviews.filter((r) => r.userId !== userId) : state.reviews,
+  })
 }
 
 export function updateProfile(patch) {

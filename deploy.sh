@@ -15,7 +15,9 @@ BRANCH="gh-pages"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Building"
-npm run build --prefix "$ROOT"
+# build:native also writes dist/updates/ — the live update the Android and
+# iOS apps pick up (scripts/build-update.mjs).
+npm run build:native --prefix "$ROOT"
 
 echo "==> Publishing dist/ to $BRANCH"
 cd "$ROOT/dist"
@@ -23,7 +25,7 @@ rm -rf .git
 git init -q
 git checkout -qb "$BRANCH"
 git add -A
-git -c user.email="punit13690@gmail.com" -c user.name="Punit" commit -qm "Deploy $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+git -c user.email="trekonvibes@gmail.com" -c user.name="Punit" commit -qm "Deploy $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 git push -qf "https://x-access-token:$(gh auth token)@github.com/$REPO.git" "$BRANCH"
 rm -rf .git
 

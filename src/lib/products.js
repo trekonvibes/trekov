@@ -1,22 +1,11 @@
 // What a business sells — rooms, rental bikes, a menu, repairs — with prices.
-//
-// The business listing is free. Listing products needs the monthly products
-// plan: one flat fee, unlimited products. Whether a listing has the plan is
-// Trekov's to say (listings.products_until, set from the dashboard until
-// online payment exists), and supabase/listing-products.sql enforces it on
-// the server, so nothing here decides who has paid.
+// Products come with the business plan (unlimited listings and products);
+// supabase/memberships.sql enforces that on the server.
 
 import { supabase } from './supabase'
 import { clearNearbyCache } from './nearby'
 
-/** Monthly price of the products plan, in rupees. Placeholder until Punit confirms it. */
-export const PRODUCTS_PLAN_INR = 299
-/** Where a business asks for the plan until online payment is set up (same contact as the landing page). */
-export const CONTACT_EMAIL = 'punit13690@gmail.com'
 export const UNITS = ['per night', 'per day', 'per hour', 'per plate', 'per person', 'per service', 'each']
-
-const today = () => new Date().toISOString().slice(0, 10)
-export const planActive = (listing) => Boolean(listing?.products_until) && listing.products_until >= today()
 export const formatInr = (n) => `₹${Number(n).toLocaleString('en-IN')}`
 
 const COLS = 'id, listing_id, name, price_inr, unit, description, available, position'
@@ -62,12 +51,4 @@ export async function deleteProduct(id) {
   const { error } = await supabase.from('listing_products').delete().eq('id', id)
   if (error) throw friendly(error)
   clearNearbyCache()
-}
-
-/** Until online payment is set up, a business asks for the plan by email. */
-export function activationMailto(listing) {
-  const subject = `Products plan for ${listing.name}`
-  const body = `Hi Trekov,\n\nPlease activate the products plan (${formatInr(PRODUCTS_PLAN_INR)}/month, unlimited products) `
-    + `for my listing:\n\n${listing.name}\nListing ID: ${listing.id}\n\nThanks`
-  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }

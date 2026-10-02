@@ -8,11 +8,10 @@
 
 import { latToTileY, lngToTileX } from './geo'
 
-export const TILE_CACHE = 'trekov-tiles-v2'
+export { TILE_CACHE, STYLE_URL } from './tileSource'
 const LEGACY_CACHES = ['trekov-tiles-v1']
 
-const HOST = 'https://tiles.openfreemap.org'
-export const STYLE_URL = `${HOST}/styles/liberty`
+import { STYLE_URL, TILE_CACHE, TILE_HOST as HOST } from './tileSource'
 const TILEJSON_URL = `${HOST}/planet`
 const SPRITE = `${HOST}/sprites/ofm_f384/ofm`
 const FONTS = ['Noto Sans Regular', 'Noto Sans Bold', 'Noto Sans Italic']

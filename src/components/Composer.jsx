@@ -7,11 +7,13 @@ import { CameraIcon, CloseIcon, Logo, SearchIcon } from './Icons'
 import Camera from './Camera'
 import PinMap from './PinMap'
 import Portal from './Portal'
+import { useMembership } from '../lib/membership'
 
 const field = 'w-full bg-raised rounded-xl px-3.5 py-2.5 text-sm outline-none placeholder:text-mist focus:ring-2 focus:ring-brand/50'
 const round5 = (n) => Math.round(n * 1e5) / 1e5
 
-export default function Composer({ onClose, onPosted, onNewPlace }) {
+export default function Composer({ onClose, onPosted, onNewPlace, onPlans }) {
+  const membership = useMembership()
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState('')
   const [shooting, setShooting] = useState(true)   // open straight into the camera
@@ -82,6 +84,11 @@ export default function Composer({ onClose, onPosted, onNewPlace }) {
   async function submit(e) {
     e.preventDefault()
     if (!ready || busy) return
+    // Posts are shared with everyone, so once paid plans are on they need an active account.
+    if (membership?.paywallOn && !membership.isMember) {
+      onClose()
+      return onPlans?.('rider')
+    }
     // A fix from long ago doesn't prove where the photo was taken.
     if (Date.now() - Date.parse(fix.at) > FIX_MAX_AGE_MS) {
       setError('Checking your location again — post once it confirms.')
@@ -146,9 +153,9 @@ export default function Composer({ onClose, onPosted, onNewPlace }) {
   return (
     <Portal>
       <div className="fixed inset-0 z-[1200] bg-black flex justify-center">
-        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line">
+        <div className="tk-shell h-full bg-ink flex flex-col sm:border-x sm:border-line pt-safe px-safe">
         <header className="flex items-center justify-between px-4 h-14 border-b border-line shrink-0">
-          <button onClick={onClose} className="text-mist hover:text-white" aria-label="Cancel"><CloseIcon size={22} /></button>
+          <button onClick={onClose} className="-ml-2 grid place-items-center size-10 text-mist hover:text-white" aria-label="Cancel"><CloseIcon size={22} /></button>
           <span className="flex items-center gap-2 font-semibold"><Logo size={18} /> New photo</span>
           <button form="composer" type="submit" disabled={!ready || busy}
                   className="text-sm font-semibold text-brand disabled:text-mist disabled:opacity-50">
@@ -157,9 +164,9 @@ export default function Composer({ onClose, onPosted, onNewPlace }) {
         </header>
 
         <form id="composer" onSubmit={submit}
-              className="flex-1 overflow-y-auto p-4 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              className="flex-1 overflow-y-auto p-4 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-w-2xl mx-auto w-full">
           <button type="button" onClick={() => setShooting(true)}
-                  className="w-full aspect-[4/5] max-h-[38vh] rounded-2xl border border-dashed border-line bg-surface
+                  className="w-full aspect-[4/5] max-h-[38vh] supports-[height:1dvh]:max-h-[38dvh] rounded-2xl border border-dashed border-line bg-surface
                              overflow-hidden flex flex-col items-center justify-center gap-3 text-mist hover:border-brand transition">
             {preview
               ? <img src={preview} alt="" className="size-full object-cover" />
@@ -238,13 +245,13 @@ export default function Composer({ onClose, onPosted, onNewPlace }) {
               </>
             ) : (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
                   <input className={field} placeholder="Place name *" value={fresh.name}
                          onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
                   <input className={field} placeholder="Region *" value={fresh.region}
                          onChange={(e) => setFresh({ ...fresh, region: e.target.value })} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
                   <input className={field} placeholder="Country" value={fresh.country}
                          onChange={(e) => setFresh({ ...fresh, country: e.target.value })} />
                   <input className={field} placeholder="Best time (Nov–Feb)" value={fresh.bestTime}

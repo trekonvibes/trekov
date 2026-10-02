@@ -24,26 +24,29 @@ END = ("end", os.path.join(T, "endcard.png"), 0)
 # the last shot of a scene takes whatever time the line leaves.
 SCENES = {
     "L01": ([("broll", b1, 0.0, 4.0), ("broll", stop, 0.0)], "t01"),
+    # 2026-09-11 update: one route for the group, count chip, turn chip, big buttons.
     "L02": ([("app", rec("nav"), 0.3)], "t02"),
     "L03": ([("app", rec("nav"), 5.2)], "t03"),
     "L04": ([("app", rec("nav"), 10.2)], "t04"),
     "L05": ([("broll", stop, 2.2, 1.8), ("app", rec("alert"), 0.5)], "t05"),
-    "L06": ([("broll", lake, 0.8)], "t06"),
+    "L06": ([("broll", lake, 0.8, 1.6), ("app", rec("nav"), 1.0)], "t06"),
     "L07": ([("broll", dhaba, 0.4, 1.5), ("app", rec("trip"), 1.7)], "t07"),
-    "L08": ([("app", rec("invite"), 0.5)], "t08"),
-    "L09": ([("app", rec("offline"), 1.6)], "t09"),
+    "L08": ([("app", rec("invite2"), 0.2)], "t08"),
+    "L09": ([("app", rec("offline2"), 0.4)], "t09"),
     "L10": ([("app", rec("discover"), 0.4)], "t10"),
     # live camera, then straight to "Location confirmed" — skipping the shutter's black flash (2.77–3.07 s)
     "L11": ([("broll", tea, 0.6, 1.2), ("app", rec("post"), 1.05, 1.7), ("app", rec("post"), 3.1)], "t11"),
-    "L12": ([("app", rec("post"), 6.2)], "t12"),
-    "L13": ([("app", rec("map"), 0.8)], "t13"),
+    "L12": ([("app", rec("install"), 0.3)], "t12"),
+    "L13": ([("app", rec("nav"), 3.0)], "t13"),
     "L14": ([("broll", convoy, 0.0, 1.1), END], None),
     "H30": ([("broll", b1, 0.2)], "t01"),
     "HOOK": ([("broll", b1, 0.0)], "t01"),   # music only, no voice
 }
 FIXED = {"HOOK": 2.5}                       # scenes without a voice line
-ORDER = {"60": [f"L{i:02d}" for i in range(1, 15)],
-         "30": ["HOOK", "L02", "L05", "L07", "L11", "L14"]}[CUT]
+ORDER = {"75": [f"L{i:02d}" for i in range(1, 15)],
+         # 60 s: every new feature; vehicle choice, nearby and live photos are in the 75 s cut.
+         "60": ["L01", "L02", "L04", "L05", "L06", "L07", "L08", "L09", "L12", "L13", "L14"],
+         "30": ["HOOK", "L02", "L05", "L09", "L12", "L14"]}[CUT]
 TARGET = float(CUT)
 
 # Inset for app recordings: 84% size, rounded corners, soft shadow.
