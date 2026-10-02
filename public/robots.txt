@@ -1,0 +1,5 @@
+# Everything on trekov.com may be crawled.
+User-agent: *
+Allow: /
+
+Sitemap: https://trekov.com/sitemap.xml
