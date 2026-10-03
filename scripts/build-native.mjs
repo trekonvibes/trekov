@@ -44,6 +44,11 @@ await rm(join(OUT, 'download'), { recursive: true, force: true })
 // Nor the live-update packages (scripts/build-update.mjs), or each bundle
 // would carry the previous one.
 await rm(join(OUT, 'updates'), { recursive: true, force: true })
+// Files that exist only for crawlers of the website. Left in, every edit to
+// them would change the bundle and send the apps an update with nothing new.
+for (const f of ['robots.txt', 'sitemap.xml', 'llms.txt', '404.html', 'cdb5beda5a1d5f7b90bf97293e47b673.txt']) {
+  await rm(join(OUT, f), { force: true })
+}
 
 const files = await readdir(OUT)
 console.log(`✅ ${OUT}/ ready — ${files.length} entries at the root:`, files.join(', '))

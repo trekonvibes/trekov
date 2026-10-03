@@ -1,0 +1,39 @@
+# Trekov
+
+> Trekov is an app for group rides. The whole group follows one route and sees each other live on one map, with one-tap STOP, WAIT and LET'S GO alerts, push-to-talk, turn-by-turn navigation and offline maps. Made in India. Website: https://trekov.com
+
+## What it does
+
+- Everyone on one map: every rider live, with position, heading and speed, and the whole route drawn under them.
+- STOP, WAIT and LET'S GO alerts: one tap and every phone in the group flashes full screen, buzzes and sounds a loud alarm.
+- Push-to-talk: hold the button to speak to the whole group. Nothing is sent unless the button is held, and nothing is recorded.
+- Trip planning: build a trip from real places in riding order, with the distance and time between stops and the fuel, food, stays and tolls along the way.
+- Host and captain: whoever creates the trip is the host, who adds and removes riders and names a captain for the group to follow.
+- Open rides: a host can make a group trip public so other riders can find it and ask to join; the host approves each one.
+- Navigation: turn-by-turn with the group still on the map, a screen that stays awake, and an off-route warning.
+- Offline maps: download the route before leaving, and the map and position keep working without signal.
+- Places: stays, food, fuel, garages, rentals and things to see near a rider or a route, with photos from riders who were there.
+
+## Privacy
+
+- A rider's live position goes only to the people on their trip and is never stored on Trekov's servers.
+- Sharing can be switched off, or hidden from one rider while the rest still see it.
+
+## Availability and price
+
+- Android: download from https://trekov.com/download/ (Android 7 or newer). Google Play is coming.
+- iPhone: open https://trekov.com/app/ in Safari, tap Share, then Add to Home Screen. The App Store version is coming.
+- Laptop: https://trekov.com/app/ runs in the browser.
+- Everything is free for everyone until 31 October 2026, with no card needed.
+
+## Pages
+
+- [Home](https://trekov.com/): what Trekov does, with questions and answers
+- [Get Trekov](https://trekov.com/download/): install steps for Android, iPhone and laptop
+- [Privacy](https://trekov.com/privacy/): what Trekov keeps and who can see it
+- [Terms of use](https://trekov.com/terms/)
+- [Delete your account](https://trekov.com/delete-account/)
+
+## Contact
+
+- trekonvibes@gmail.com
